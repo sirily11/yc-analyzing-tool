@@ -1,0 +1,61 @@
+import { convertToModelMessages, stepCountIs, streamText, type UIMessage, validateUIMessages } from "ai";
+import { appConfig, hasGatewayConfig } from "@/config";
+import { getCurrentUser } from "@/lib/auth";
+import { generateChatTitle } from "@/lib/ai/chat-title";
+import { persistChatCompletion } from "@/lib/ai/chat-persistence";
+import { createAnalysisTools } from "@/lib/ai/tools";
+import { chatDataSchemas, collectChatAnalysisText, hasApprovedConfirmation, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart } from "@/lib/ai/chat-source";
+import { DEFAULT_CHAT_TITLE } from "@/lib/chat-title";
+import { getChat, renameChatIfTitleMatches, replaceMessages } from "@/lib/db/repository";
+
+export const maxDuration = 60;
+
+export async function POST(request: Request) {
+  const user = await getCurrentUser();
+  if (!user) return Response.json({ error: "Authentication required" }, { status: 401 });
+  if (!hasGatewayConfig) return Response.json({ error: "AI Gateway is not configured" }, { status: 503 });
+  const body = await request.json() as { id: string; messages: UIMessage[] };
+  const chat = await getChat(user.id, body.id);
+  if (!chat) return Response.json({ error: "Chat not found" }, { status: 404 });
+  const chatText = collectChatAnalysisText(body.messages);
+  const tools = createAnalysisTools({ userId: user.id, chatId: chat.id, chatText, hasApprovedConfirmation: hasApprovedConfirmation(body.messages) });
+  const messages = await validateUIMessages({ messages: body.messages, dataSchemas: chatDataSchemas, tools: tools as unknown as Parameters<typeof validateUIMessages>[0]["tools"] });
+  const modelMessages = await convertToModelMessages(messages, { tools, convertDataPart: pdfAttachmentToModelPart });
+  const requiresPdfApproval = latestMessageRequestsPdfAnalysis(messages);
+  const result = streamText({
+    model: appConfig.chatModel,
+    temperature: appConfig.temperature,
+    stopWhen: stepCountIs(appConfig.maxToolSteps),
+    system: `You are Application Signal, a concise startup application analyst. Render normal answers in clear GitHub-flavored Markdown. Never claim to predict YC acceptance probability. The only score is a YC Fit Score.
+
+When you need information from the user before continuing, call askQuestion instead of asking in prose. Do not end a normal prose response with a question that requires an answer. Use single-select for one choice, multiple-select for several choices, or free-form for an open response. Single-select automatically includes a custom free-form answer in the UI.
+
+When a user uploads a PDF, call confirm with a short title and message explaining that approval will analyze the pitch deck and create a report. When a user explicitly asks to score, assess, or generate a report from a startup description they typed in chat, use the same confirmation flow. A PDF is not required for chat-based analysis. Always use confirm instead of asking the user for approval in prose. Do not call the analysis tools for ordinary brainstorming or follow-up questions unless the user asks for a new score or report.
+
+Only after confirm returns confirmed, call analyzeApplication with the exact supplied PDF reference or the chat source. Then call runLocalFitPrediction using analyzeApplication's exact reportId and profile. After the browser tool returns, call publishReport with the exact prior profile and prediction. Do not change model scores or versions. After publication, briefly link the report. Every new or materially revised score requires a new confirmed confirm tool call.`,
+    messages: modelMessages,
+    tools,
+    toolChoice: requiresPdfApproval ? { type: "tool", toolName: "confirm" } : "auto",
+  });
+  return result.toUIMessageStreamResponse({
+    originalMessages: messages,
+    onFinish: async ({ messages: finished, isAborted, finishReason }) => {
+      const persisted = await persistChatCompletion(
+        () => replaceMessages(user.id, chat.id, finished),
+        { onFailure: (cause) => console.error("Failed to persist completed chat stream", cause) },
+      );
+      if (!persisted) return;
+      const isFirstExchange = finished.filter((message) => message.role === "user").length === 1
+        && finished.some((message) => message.role === "assistant" && message.parts.length > 0);
+      if (!isAborted && finishReason !== "error" && chat.title === DEFAULT_CHAT_TITLE && isFirstExchange) {
+        try {
+          const title = await generateChatTitle(finished);
+          if (title) await renameChatIfTitleMatches(user.id, chat.id, DEFAULT_CHAT_TITLE, title);
+        } catch (cause) {
+          console.error("Failed to generate the initial chat title", cause);
+        }
+      }
+    },
+    onError: () => "The analysis could not complete. Your retained PDF is still available in this conversation.",
+  });
+}
