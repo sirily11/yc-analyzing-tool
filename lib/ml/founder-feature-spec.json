@@ -1,0 +1,17 @@
+{
+  "founderCountBand": ["solo", "two", "three-plus", "unknown"],
+  "capabilityDomains": [
+    "software",
+    "ai-data",
+    "hardware",
+    "science-health",
+    "product-design",
+    "sales-distribution",
+    "operations",
+    "finance-regulatory"
+  ],
+  "domainExperience": ["direct", "adjacent", "not-evidenced"],
+  "technicalCapability": ["demonstrated", "stated", "not-evidenced"],
+  "priorBuildingExperience": ["demonstrated", "stated", "not-evidenced"],
+  "teamComplementarity": ["demonstrated", "not-evidenced", "not-applicable", "unknown"]
+}

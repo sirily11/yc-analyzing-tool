@@ -51,6 +51,8 @@ export function ReportPdf({ report, companies }: { report: ReportDocument; compa
   const nearest = new Set(report.prediction.nearestCompanyIds);
   const mapNodes = selectReportMapCompanies(companies, point, 180);
   const companiesById = new Map(companies.map((company) => [company.id, company]));
+  const founder = report.profile.founderProfile;
+  const components = report.prediction.scoreComponents;
   const profileItems = [
     ["Sector", report.profile.sector],
     ["Subindustry", report.profile.subindustry],
@@ -58,6 +60,12 @@ export function ReportPdf({ report, companies }: { report: ReportDocument; compa
     ["Business model", report.profile.businessModel],
     ["Product", report.profile.productModality],
     ["Stage", report.profile.stage],
+    ...(founder ? [
+      ["Founder capabilities", founder.capabilityDomains.length ? founder.capabilityDomains.join(", ") : "Not evidenced"],
+      ["Domain experience", founder.domainExperience],
+      ["Technical capability", founder.technicalCapability],
+      ["Team complementarity", founder.teamComplementarity],
+    ] : []),
   ];
 
   return <Document title={report.title} author="Application Signal" subject="Independent YC fit report">
@@ -68,7 +76,7 @@ export function ReportPdf({ report, companies }: { report: ReportDocument; compa
       <View style={styles.scoreBox}>
         <Text style={styles.scoreLabel}>YC Fit Score</Text>
         <Text style={styles.score}>{Math.round(report.prediction.score)}</Text>
-        <Text style={styles.muted}>/100 - {report.prediction.band}{"\n"}Evidence: {report.prediction.coverage}</Text>
+        <Text style={styles.muted}>/100 - {report.prediction.band}{"\n"}Evidence: {report.prediction.coverage}{components ? `\nStartup ${Math.round(components.startupFit)} - Founder ${components.founderFit === null ? "N/A" : Math.round(components.founderFit)}` : ""}</Text>
       </View>
       <View style={styles.divider} />
       <Text style={styles.sectionLabel}>01 / Position</Text>

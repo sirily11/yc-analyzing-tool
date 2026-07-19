@@ -115,7 +115,7 @@ const companies = source.flatMap<YcCompany>((company) => {
 
 companies.sort((a, b) => b.year - a.year || a.name.localeCompare(b.name));
 const manifest: DatasetManifest = {
-  version: "yc-2022-2026-ytd-v1",
+  version: "yc-2022-2026-ytd-v2",
   source: SOURCE,
   generatedAt: new Date().toISOString(),
   firstYear: FIRST_YEAR,

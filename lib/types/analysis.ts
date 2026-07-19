@@ -1,5 +1,46 @@
 import { z } from "zod";
 
+export const founderCountBandSchema = z.enum(["solo", "two", "three-plus", "unknown"]);
+export const founderCapabilityDomainSchema = z.enum([
+  "software",
+  "ai-data",
+  "hardware",
+  "science-health",
+  "product-design",
+  "sales-distribution",
+  "operations",
+  "finance-regulatory",
+]);
+export const founderExperienceSchema = z.enum(["direct", "adjacent", "not-evidenced"]);
+export const founderEvidenceStrengthSchema = z.enum(["demonstrated", "stated", "not-evidenced"]);
+export const founderTeamComplementaritySchema = z.enum(["demonstrated", "not-evidenced", "not-applicable", "unknown"]);
+
+export const founderProfileSchema = z.object({
+  founderCountBand: founderCountBandSchema,
+  capabilityDomains: z.array(founderCapabilityDomainSchema).max(8),
+  domainExperience: founderExperienceSchema,
+  technicalCapability: founderEvidenceStrengthSchema,
+  priorBuildingExperience: founderEvidenceStrengthSchema,
+  teamComplementarity: founderTeamComplementaritySchema,
+  evidencePages: z.array(z.number().int().positive()).max(20),
+  missingFields: z.array(z.string()).max(8),
+  coverage: z.number().min(0).max(1),
+});
+
+export type FounderProfile = z.infer<typeof founderProfileSchema>;
+
+export const emptyFounderProfile: FounderProfile = {
+  founderCountBand: "unknown",
+  capabilityDomains: [],
+  domainExperience: "not-evidenced",
+  technicalCapability: "not-evidenced",
+  priorBuildingExperience: "not-evidenced",
+  teamComplementarity: "unknown",
+  evidencePages: [],
+  missingFields: ["founder background"],
+  coverage: 0,
+};
+
 export const applicationProfileSchema = z.object({
   companyName: z.string().min(1),
   summary: z.string().min(1),
@@ -16,6 +57,7 @@ export const applicationProfileSchema = z.object({
   missingFields: z.array(z.string()).max(12),
   evidencePages: z.array(z.number().int().positive()).max(20),
   extractionCoverage: z.number().min(0).max(1),
+  founderProfile: founderProfileSchema.default(emptyFounderProfile),
 });
 
 export type ApplicationProfile = z.infer<typeof applicationProfileSchema>;
@@ -26,6 +68,12 @@ export const predictionResultSchema = z.object({
   band: z.enum(["Early signal", "Promising", "Strong fit"]),
   coverage: z.enum(["low", "medium", "high"]),
   reconstructionPercentile: z.number().min(0).max(1),
+  scoreComponents: z.object({
+    startupFit: z.number().min(0).max(100),
+    founderFit: z.number().min(0).max(100).nullable(),
+    startupWeight: z.number().min(0).max(1),
+    founderWeight: z.number().min(0).max(1),
+  }).default({ startupFit: 0, founderFit: null, startupWeight: 1, founderWeight: 0 }),
   nearestCompanyIds: z.array(z.number().int()).max(12),
   clusterPoint: z.object({ x: z.number(), y: z.number() }),
   factors: z.array(

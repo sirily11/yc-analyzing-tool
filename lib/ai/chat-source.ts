@@ -64,6 +64,23 @@ export function latestMessageRequestsPdfAnalysis(messages: UIMessage[]) {
   return latest?.role === "user" && getPdfAttachment(latest) !== null;
 }
 
+/** Whether the workflow started by a submitted PDF has reached a terminal tool state. */
+export function submittedPdfWorkflowIsTerminal(messages: UIMessage[], documentId: string) {
+  const submittedIndex = messages.findLastIndex((message) => getPdfAttachment(message)?.documentId === documentId);
+  if (submittedIndex < 0) return false;
+  return messages.slice(submittedIndex + 1).some((message) => message.parts.some((part) => {
+    if (!("state" in part)) return false;
+    if (part.type === "tool-publishReport" && part.state === "output-available") return true;
+    if (part.type === "tool-confirm" && (
+      part.state === "output-denied"
+      || part.state === "output-error"
+      || ("approval" in part && part.approval?.approved === false)
+    )) return true;
+    return ["tool-analyzeApplication", "tool-runLocalFitPrediction", "tool-publishReport"].includes(part.type)
+      && part.state === "output-error";
+  }));
+}
+
 /** Check for an approved, not-yet-consumed confirmation after the latest user turn. */
 export function hasApprovedConfirmation(messages: UIMessage[]) {
   const latestUserIndex = messages.findLastIndex((message) => message.role === "user");

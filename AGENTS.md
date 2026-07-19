@@ -19,15 +19,15 @@ bun run test
 bun run build
 ```
 
-Use `bun run model:upload -- --dry-run` to verify model packaging locally without changing external state or `config.ts`.
+Use `bun run model:upload -- --dry-run --model-version browser-fit-v2` to verify v2 packaging locally without changing external state, active configuration, or directory coordinates.
 
 ## Model training and release contract
 
 - Never commit raw or packaged model artifacts. `ml/artifacts/`, `public/models/`, and `ml/releases/` must remain ignored by Git.
 - The browser downloads one ZIP using `appConfig.modelArchiveUrl` in `config.ts` and expands the required runtime files in memory. Do not restore individual public model URLs or commit ONNX files as web assets.
-- A release ZIP must contain `model.onnx`, `normalization.json`, `calibration.json`, `reference-latent.bin`, `reference-ids.json`, `evaluation.json`, and `manifest.json` under the model-version directory.
+- Every release ZIP contains `model.onnx`, `normalization.json`, `calibration.json`, `reference-latent.bin`, `reference-ids.json`, `evaluation.json`, and `manifest.json` under the model-version directory. Founder-aware releases additionally require `reference-founder-availability.json`.
 - Release object names use `<random-uuid>-<model-version>.zip`, optionally beneath `S3_PREFIX`. Unique names are intentional so new releases do not reuse stale CDN objects.
-- `scripts/release-model.ts` owns packaging, S3 upload, uploaded-size verification, custom-domain URL construction, and the atomic `config.ts` update. Keep these steps together so a failed validation or upload cannot replace the working URL.
+- `scripts/release-model.ts` owns manifest-driven packaging, S3 upload, uploaded-size verification, custom-domain URL construction, and atomic activation of `config.ts`, the dataset manifest, and learned coordinates. Keep these steps together so a failed validation, upload, or activation cannot replace the working release.
 - `ml/train.py` owns the full release sequence: train, write artifacts, validate, promote, invoke `model:upload`, and fail the command if any stage fails.
 - `bun run model:upload` uploads the currently promoted model and updates `config.ts` without retraining. It mutates S3 and local configuration; only run it when an upload is intended.
 - `bun run model:train` also mutates S3 and `config.ts` after successful training. Do not use it as a read-only validation command.

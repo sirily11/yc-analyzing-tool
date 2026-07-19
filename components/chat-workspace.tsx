@@ -8,7 +8,7 @@ import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalRespons
 import { ArrowUp, Check, ChevronRight, FileText, LoaderCircle, Paperclip, Pencil, ShieldCheck, Sparkles, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText } from "@/lib/ai/chat-source";
+import { createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
 import { questionInputSchema, questionOutputSchema, type QuestionOutput } from "@/lib/ai/question";
 import { MAX_CHAT_TITLE_LENGTH, normalizeChatTitle } from "@/lib/chat-title";
 import { extractPdf } from "@/lib/pdf/client";
@@ -22,6 +22,7 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
   const [fileError, setFileError] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
   const [removingFile, setRemovingFile] = useState(false);
+  const [submittedDocumentId, setSubmittedDocumentId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [title, setTitle] = useState(initialTitle);
   const [titleDraft, setTitleDraft] = useState(initialTitle);
@@ -63,8 +64,14 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
     if (published) setModelProgress(null);
   }, [messages]);
 
+  useEffect(() => {
+    if (submittedDocumentId && (error || submittedPdfWorkflowIsTerminal(messages, submittedDocumentId))) {
+      setSubmittedDocumentId(null);
+    }
+  }, [error, messages, submittedDocumentId]);
+
   async function chooseFile(selected: File | undefined) {
-    if (!selected) return;
+    if (!selected || submittedDocumentId) return;
     setExtracting(true); setFileError(null);
     try {
       const extracted = await extractPdf(selected);
@@ -106,11 +113,13 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
     if (file) {
       const retained = file;
       const request = input.trim() || DEFAULT_PDF_REPORT_REQUEST;
+      setSubmittedDocumentId(retained.id);
       setFile(null);
       setInput("");
       try {
         await sendMessage({ parts: createPdfUploadMessageParts({ documentId: retained.id, metadata: retained.metadata }, request) });
       } catch {
+        setSubmittedDocumentId(null);
         setFile((current) => current ?? retained);
       }
       return;
@@ -185,7 +194,7 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
         <form className="composer" onSubmit={submit}>
           {file && <div className="file-chip"><FileText size={16} /><span><strong>{file.metadata.name}</strong><small>{file.metadata.pages} pages · {(file.metadata.size / 1024 / 1024).toFixed(1)} MB · stored in S3</small></span><button type="button" aria-label="Remove PDF" disabled={removingFile} onClick={removeFile}>{removingFile ? <LoaderCircle size={14} className="spin" /> : <X size={14} />}</button></div>}
           {fileError && <div className="chat-error">{fileError}</div>}
-          <div className="composer-row"><input ref={fileInputRef} hidden type="file" accept="application/pdf,.pdf" onChange={(event) => { const selected = event.target.files?.[0]; event.target.value = ""; void chooseFile(selected); }} /><button className="icon-button" type="button" aria-label="Attach a PDF" disabled={extracting || removingFile || status !== "ready"} onClick={() => fileInputRef.current?.click()}>{extracting ? <LoaderCircle size={18} className="spin" /> : <Paperclip size={18} />}</button><textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return; event.preventDefault(); event.currentTarget.form?.requestSubmit(); }} placeholder={file ? "Ready to request approval" : "Describe your startup, ask for a fit score, or attach a PDF…"} rows={1} /><button className="send-button" type="submit" aria-label="Send" disabled={status !== "ready" || extracting || removingFile || (!input.trim() && !file)}><ArrowUp size={18} /></button></div>
+          <div className="composer-row"><input ref={fileInputRef} hidden type="file" accept="application/pdf,.pdf" onChange={(event) => { const selected = event.target.files?.[0]; event.target.value = ""; void chooseFile(selected); }} /><button className="icon-button" type="button" aria-label="Attach a PDF" disabled={extracting || removingFile || Boolean(submittedDocumentId) || status !== "ready"} onClick={() => fileInputRef.current?.click()}>{extracting ? <LoaderCircle size={18} className="spin" /> : <Paperclip size={18} />}</button><textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) return; event.preventDefault(); event.currentTarget.form?.requestSubmit(); }} placeholder={file ? "Ready to request approval" : "Describe your startup, ask for a fit score, or attach a PDF…"} rows={1} /><button className="send-button" type="submit" aria-label="Send" disabled={status !== "ready" || extracting || removingFile || (!input.trim() && !file)}><ArrowUp size={18} /></button></div>
           <p className="composer-note">PDFs retained in configured S3 storage · Analysis is independent of YC</p>
         </form>
       </div>
@@ -291,8 +300,8 @@ function QuestionToolCard({ part, onAnswer }: { part: RenderedToolPart; onAnswer
 
 function ReportPreview({ messages }: { messages: UIMessage[] }) {
   const tools = messages.flatMap((message) => message.parts).filter((part) => part.type.startsWith("tool-")) as Array<{ type: string; state: string; output?: Record<string, unknown> }>;
-  const prediction = [...tools].reverse().find((part) => part.type === "tool-runLocalFitPrediction" && part.state === "output-available")?.output as { score?: number; band?: string; factors?: Array<{ label: string; value: string }> } | undefined;
+  const prediction = [...tools].reverse().find((part) => part.type === "tool-runLocalFitPrediction" && part.state === "output-available")?.output as { score?: number; band?: string; scoreComponents?: { startupFit: number; founderFit: number | null }; factors?: Array<{ label: string; value: string }> } | undefined;
   const publication = [...tools].reverse().find((part) => part.type === "tool-publishReport" && part.state === "output-available")?.output;
   if (!prediction) return <div className="empty-report"><div className="empty-orbit"><span /></div><h3>Your company will appear here.</h3><p>The candidate node, closest public YC analogs, evidence coverage, and fit factors populate after approval.</p></div>;
-  return <div className="mini-report"><p className="eyebrow">YC Fit Score</p><strong className="mini-score">{Math.round(prediction.score ?? 0)}</strong><span className="score-suffix">/100 · {prediction.band}</span><div className="mini-cluster">{Array.from({ length: 42 }).map((_, index) => <i key={index} style={{ left: `${8 + ((index * 37) % 84)}%`, top: `${12 + ((index * 53) % 74)}%` }} />)}<b style={{ left: "55%", top: "42%" }} /></div><div className="factor-list">{prediction.factors?.map((factor) => <div key={factor.label}><span>{factor.label}</span><strong>{factor.value}</strong></div>)}</div>{publication && <Link href={String(publication.href)} className="button-dark" target="_blank" rel="noopener noreferrer">View report <ChevronRight size={15} /></Link>}</div>;
+  return <div className="mini-report"><p className="eyebrow">YC Fit Score</p><strong className="mini-score">{Math.round(prediction.score ?? 0)}</strong><span className="score-suffix">/100 · {prediction.band}</span>{prediction.scoreComponents && <span className="score-suffix">Startup {Math.round(prediction.scoreComponents.startupFit)} · Founder {prediction.scoreComponents.founderFit === null ? "N/A" : Math.round(prediction.scoreComponents.founderFit)}</span>}<div className="mini-cluster">{Array.from({ length: 42 }).map((_, index) => <i key={index} style={{ left: `${8 + ((index * 37) % 84)}%`, top: `${12 + ((index * 53) % 74)}%` }} />)}<b style={{ left: "55%", top: "42%" }} /></div><div className="factor-list">{prediction.factors?.map((factor) => <div key={factor.label}><span>{factor.label}</span><strong>{factor.value}</strong></div>)}</div>{publication && <Link href={String(publication.href)} className="button-dark" target="_blank" rel="noopener noreferrer">View report <ChevronRight size={15} /></Link>}</div>;
 }

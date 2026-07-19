@@ -15,6 +15,7 @@
     "db:studio": "drizzle-kit studio",
     "data:sync": "bun run scripts/sync-yc-data.ts",
     "model:categorize": "bun run scripts/categorize-yc-data.ts",
+    "model:founders": "bun run scripts/enrich-yc-founders.ts",
     "model:train": "ml/.venv/bin/python ml/train.py",
     "model:validate": "ml/.venv/bin/python ml/validate_artifacts.py",
     "model:promote": "ml/.venv/bin/python ml/validate_artifacts.py --promote",

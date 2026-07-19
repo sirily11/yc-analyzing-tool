@@ -4,7 +4,7 @@ import path from "node:path";
 import { zipSync } from "fflate";
 import { appConfig } from "../config";
 
-const releaseFiles = [
+const baseReleaseFiles = [
   "model.onnx",
   "normalization.json",
   "calibration.json",
@@ -13,6 +13,12 @@ const releaseFiles = [
   "evaluation.json",
   "manifest.json",
 ] as const;
+
+type ReleaseManifest = {
+  version: string;
+  datasetVersion: string;
+  founderFeatureDimensions?: number;
+};
 
 type S3Config = {
   accessKeyId: string;
@@ -70,27 +76,81 @@ export function withModelArchiveUrl(configSource: string, archiveUrl: string) {
   return configSource.replace(field, `$1${JSON.stringify(archiveUrl)}`);
 }
 
+export function withActiveModelConfig(configSource: string, release: { modelVersion: string; datasetVersion: string; archiveUrl: string }) {
+  const replacements: Array<[RegExp, string, string]> = [
+    [/(\bdatasetVersion:\s*)("[^"]*"|'[^']*')/, "datasetVersion", release.datasetVersion],
+    [/(\bmodelVersion:\s*)("[^"]*"|'[^']*')/, "modelVersion", release.modelVersion],
+    [/(\bmodelArchiveUrl:\s*)("[^"]*"|'[^']*')/, "modelArchiveUrl", release.archiveUrl],
+  ];
+  return replacements.reduce((source, [pattern, field, value]) => {
+    if (!pattern.test(source)) throw new Error(`${field} was not found in config.ts.`);
+    return source.replace(pattern, `$1${JSON.stringify(value)}`);
+  }, configSource);
+}
+
+export function withDatasetManifestVersion(source: string, datasetVersion: string) {
+  const manifest = JSON.parse(source) as Record<string, unknown>;
+  manifest.version = datasetVersion;
+  return `${JSON.stringify(manifest, null, 2)}\n`;
+}
+
 export async function packageModelArchive(sourceDirectory: string, outputDirectory: string, releaseId: string) {
+  const manifest = JSON.parse(await readFile(path.join(sourceDirectory, "manifest.json"), "utf8")) as ReleaseManifest;
+  if (!manifest.version || !manifest.datasetVersion) throw new Error("The promoted model manifest is missing version information.");
+  const releaseFiles = manifest.founderFeatureDimensions
+    ? [...baseReleaseFiles, "reference-founder-availability.json"]
+    : [...baseReleaseFiles];
   const entries: Record<string, Uint8Array> = {};
   for (const filename of releaseFiles) {
-    entries[`${appConfig.modelVersion}/${filename}`] = await readFile(path.join(sourceDirectory, filename));
+    entries[`${manifest.version}/${filename}`] = await readFile(path.join(sourceDirectory, filename));
   }
 
   const archive = zipSync(entries, { level: 6 });
   await mkdir(outputDirectory, { recursive: true });
-  const archivePath = path.join(outputDirectory, `${releaseId}-${appConfig.modelVersion}.zip`);
+  const archivePath = path.join(outputDirectory, `${releaseId}-${manifest.version}.zip`);
   await writeFile(archivePath, archive);
-  return { archive, archivePath };
+  return { archive, archivePath, manifest };
 }
 
-async function updateConfig(archiveUrl: string) {
+async function activateModel(sourceDirectory: string, archiveUrl: string, manifest: ReleaseManifest) {
   const configPath = path.join(process.cwd(), "config.ts");
-  const current = await readFile(configPath, "utf8");
-  const updated = withModelArchiveUrl(current, archiveUrl);
-  const currentStat = await stat(configPath);
-  const temporaryPath = path.join(process.cwd(), `.config.ts.${process.pid}.${randomUUID()}.tmp`);
-  await writeFile(temporaryPath, updated, { mode: currentStat.mode });
-  await rename(temporaryPath, configPath);
+  const dataPath = path.join(process.cwd(), "public/data/yc-companies.json");
+  const datasetManifestPath = path.join(process.cwd(), "public/data/manifest.json");
+  const [currentConfig, currentData, currentDatasetManifest, nextData, configStat, dataStat, manifestStat] = await Promise.all([
+    readFile(configPath, "utf8"),
+    readFile(dataPath),
+    readFile(datasetManifestPath, "utf8"),
+    readFile(path.join(sourceDirectory, "directory-companies.json")),
+    stat(configPath),
+    stat(dataPath),
+    stat(datasetManifestPath),
+  ]);
+  const nextConfig = withActiveModelConfig(currentConfig, {
+    modelVersion: manifest.version,
+    datasetVersion: manifest.datasetVersion,
+    archiveUrl,
+  });
+  const nextDatasetManifest = withDatasetManifestVersion(currentDatasetManifest, manifest.datasetVersion);
+  const temporaryConfig = path.join(process.cwd(), `.config.ts.${process.pid}.${randomUUID()}.tmp`);
+  const temporaryData = path.join(process.cwd(), `public/data/.yc-companies.${process.pid}.${randomUUID()}.tmp`);
+  const temporaryManifest = path.join(process.cwd(), `public/data/.manifest.${process.pid}.${randomUUID()}.tmp`);
+  await Promise.all([
+    writeFile(temporaryConfig, nextConfig, { mode: configStat.mode }),
+    writeFile(temporaryData, nextData, { mode: dataStat.mode }),
+    writeFile(temporaryManifest, nextDatasetManifest, { mode: manifestStat.mode }),
+  ]);
+  try {
+    await rename(temporaryData, dataPath);
+    await rename(temporaryManifest, datasetManifestPath);
+    await rename(temporaryConfig, configPath);
+  } catch (error) {
+    await Promise.all([
+      writeFile(configPath, currentConfig, { mode: configStat.mode }),
+      writeFile(dataPath, currentData, { mode: dataStat.mode }),
+      writeFile(datasetManifestPath, currentDatasetManifest, { mode: manifestStat.mode }),
+    ]);
+    throw error;
+  }
 }
 
 function createS3Client(config: S3Config) {
@@ -101,11 +161,12 @@ function createS3Client(config: S3Config) {
   return new constructor(config);
 }
 
-export async function releaseModel({ dryRun = false }: { dryRun?: boolean } = {}) {
+export async function releaseModel({ dryRun = false, modelVersion = appConfig.modelVersion }: { dryRun?: boolean; modelVersion?: string } = {}) {
   const releaseId = randomUUID();
-  const sourceDirectory = path.join(process.cwd(), "public", "models", appConfig.modelVersion);
+  const sourceDirectory = path.join(process.cwd(), "public", "models", modelVersion);
   const outputDirectory = path.join(process.cwd(), "ml", "releases");
-  const { archive, archivePath } = await packageModelArchive(sourceDirectory, outputDirectory, releaseId);
+  const { archive, archivePath, manifest } = await packageModelArchive(sourceDirectory, outputDirectory, releaseId);
+  if (manifest.version !== modelVersion) throw new Error(`Promoted manifest version ${manifest.version} does not match requested model ${modelVersion}.`);
   const sha256 = createHash("sha256").update(archive).digest("hex");
 
   console.log(`Packaged ${path.relative(process.cwd(), archivePath)} (${archive.byteLength.toLocaleString()} bytes).`);
@@ -116,7 +177,7 @@ export async function releaseModel({ dryRun = false }: { dryRun?: boolean } = {}
   }
 
   const config = s3Config();
-  const objectKey = modelObjectKey(config.prefix, releaseId, appConfig.modelVersion);
+  const objectKey = modelObjectKey(config.prefix, releaseId, manifest.version);
   const client = createS3Client(config);
   await client.write(objectKey, archive, { type: "application/zip" });
   const uploaded = await client.stat(objectKey);
@@ -125,12 +186,15 @@ export async function releaseModel({ dryRun = false }: { dryRun?: boolean } = {}
   }
 
   const archiveUrl = publicModelUrl(config.downloadBaseUrl, objectKey);
-  await updateConfig(archiveUrl);
+  await activateModel(sourceDirectory, archiveUrl, manifest);
   console.log(`Uploaded s3://${config.bucket}/${objectKey}.`);
-  console.log(`Updated config.ts modelArchiveUrl to ${archiveUrl}.`);
+  console.log(`Activated ${manifest.version} (${manifest.datasetVersion}) at ${archiveUrl}.`);
   return { archivePath, releaseId, sha256, archiveUrl };
 }
 
 if (import.meta.main) {
-  await releaseModel({ dryRun: process.argv.includes("--dry-run") });
+  const versionIndex = process.argv.indexOf("--model-version");
+  const modelVersion = versionIndex >= 0 ? process.argv[versionIndex + 1] : appConfig.modelVersion;
+  if (!modelVersion) throw new Error("--model-version requires a value.");
+  await releaseModel({ dryRun: process.argv.includes("--dry-run"), modelVersion });
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UIMessage } from "ai";
-import { collectChatAnalysisText, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, hasApprovedConfirmation, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart } from "@/lib/ai/chat-source";
+import { collectChatAnalysisText, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, hasApprovedConfirmation, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
 
 const attachment = {
   documentId: "0de282a1-3730-4d19-ad55-aac1a45da748",
@@ -66,5 +66,15 @@ describe("chat analysis source", () => {
     expect(getVisibleUserText(message)).toBe(DEFAULT_PDF_REPORT_REQUEST);
     expect(latestMessageRequestsPdfAnalysis([message])).toBe(true);
     expect(collectChatAnalysisText([message])).toBeNull();
+  });
+
+  it("keeps a submitted PDF available through approval and releases the upload guard at terminal states", () => {
+    const user = { id: "upload", role: "user", parts: createPdfUploadMessageParts(attachment, "Score it") } satisfies UIMessage;
+    const approval = { id: "confirm", role: "assistant", parts: [{ type: "tool-confirm", toolCallId: "call-confirm", state: "approval-requested", input: {}, approval: { id: "approval" } }] } as UIMessage;
+    expect(getPdfAttachment(user)?.documentId).toBe(attachment.documentId);
+    expect(submittedPdfWorkflowIsTerminal([user, approval], attachment.documentId)).toBe(false);
+
+    const published = { id: "publish", role: "assistant", parts: [{ type: "tool-publishReport", toolCallId: "call-publish", state: "output-available", input: {}, output: {} }] } as UIMessage;
+    expect(submittedPdfWorkflowIsTerminal([user, approval, published], attachment.documentId)).toBe(true);
   });
 });

@@ -41,17 +41,22 @@ S3_DOWNLOAD_BASE_URL=https://models.example.com
 
 Because the browser uploads PDFs directly through short-lived signed URLs, the S3 bucket must allow cross-origin `PUT` requests from the deployed application origin. Upload bodies are sent as raw bytes without custom request headers, so the CORS policy does not need an `AllowedHeaders` entry. The server downloads and verifies the uploaded byte size, SHA-256 hash, and extracted representation before marking a document ready.
 
-The full training command automatically validates and promotes the artifacts, creates `ml/releases/<random-uuid>-browser-fit-v1.zip`, uploads it through the S3-compatible endpoint, verifies the uploaded byte count, and updates `config.ts` with the corresponding custom-domain URL. If validation or upload fails, the previous configured URL is preserved.
+The founder-aware v2 model has independent startup and founder branches. Founder inputs are reduced to controlled job-relevant signals; raw biographies, names, schools, employers, demographics, and prestige never enter the model or release archive. Run `bun run model:founders` before training to resume the YC-hosted biography fetch and structured enrichment checkpoints.
+
+The full training command validates and promotes the artifacts, creates `ml/releases/<random-uuid>-browser-fit-v2.zip`, uploads it through the S3-compatible endpoint, verifies the uploaded byte count, and atomically activates the model version, dataset version, archive URL, and learned directory coordinates. If validation, upload, or local activation fails, the previously configured model remains active.
 
 ```bash
 # Train, validate, package, upload, and update config.ts
 bun run model:train
 
+# Resume public YC founder-page enrichment and conservative categorization
+bun run model:founders
+
 # Package and upload the currently promoted model without retraining
 bun run model:upload
 
 # Package locally without uploading or changing config.ts
-bun run model:upload -- --dry-run
+bun run model:upload -- --dry-run --model-version browser-fit-v2
 ```
 
 See `ml/README.md` for training prerequisites and the detailed offline model workflow.
@@ -64,4 +69,4 @@ bun run test
 bun run build
 ```
 
-The browser scorer loads the validated quantized ONNX release, normalization and empirical calibration data, and compact reference latent vectors from the configured model archive.
+The browser scorer loads the validated quantized ONNX release, branch-specific normalization and empirical calibration data, and compact reference latent vectors from the configured model archive. With founder evidence the overall fit is 70% startup fit and 30% founder fit; without it the startup score is preserved unchanged.

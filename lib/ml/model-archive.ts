@@ -1,6 +1,6 @@
 import { unzipSync } from "fflate";
 
-export type ModelManifest = {
+export type LegacyModelManifest = {
   version: string;
   datasetVersion: string;
   runtime: string;
@@ -9,13 +9,35 @@ export type ModelManifest = {
   bottleneckDimensions: number;
 };
 
+export type FounderAwareModelManifest = {
+  version: string;
+  datasetVersion: string;
+  runtime: string;
+  embeddingModel: string;
+  startupFeatureDimensions: number;
+  founderFeatureDimensions: number;
+  startupBottleneckDimensions: number;
+  founderBottleneckDimensions: number;
+  referenceDimensions: number;
+  scoreWeights: { startup: number; founder: number };
+};
+
+export type ModelManifest = LegacyModelManifest | FounderAwareModelManifest;
+
+type Normalization = { mean: number[]; scale: number[] };
+
+export function isFounderAwareManifest(manifest: ModelManifest): manifest is FounderAwareModelManifest {
+  return "founderFeatureDimensions" in manifest;
+}
+
 export type ModelArchive = {
   manifest: ModelManifest;
   model: Uint8Array;
-  normalization: { mean: number[]; scale: number[] };
-  calibration: number[];
+  normalization: Normalization | { startup: Normalization; founder: Normalization };
+  calibration: number[] | { startup: number[]; founder: number[] };
   referenceLatent: Uint8Array;
   referenceIds: number[];
+  referenceFounderAvailability: boolean[] | null;
 };
 
 const requiredFiles = [
@@ -43,6 +65,9 @@ export function parseModelArchive(bytes: Uint8Array): ModelArchive {
 
   const manifest = jsonFile<ModelManifest>(entries, "manifest.json");
   if (manifest.runtime !== "onnx") throw new Error("MODEL_ARCHIVE_RUNTIME_UNSUPPORTED");
+  const referenceFounderAvailability = isFounderAwareManifest(manifest)
+    ? jsonFile<boolean[]>(entries, "reference-founder-availability.json")
+    : null;
 
   const referenceLatent = archiveFile(entries, "reference-latent.bin");
   if (referenceLatent.byteLength % Float32Array.BYTES_PER_ELEMENT !== 0) {
@@ -56,6 +81,7 @@ export function parseModelArchive(bytes: Uint8Array): ModelArchive {
     calibration: jsonFile(entries, "calibration.json"),
     referenceLatent: Uint8Array.from(referenceLatent),
     referenceIds: jsonFile(entries, "reference-ids.json"),
+    referenceFounderAvailability,
   };
 }
 
