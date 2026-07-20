@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithApprovalResponses, lastAssistantMessageIsCompleteWithToolCalls, type UIMessage } from "ai";
-import { ArrowUp, Check, ChevronRight, FileText, LoaderCircle, Paperclip, Pencil, ShieldCheck, Sparkles, Square, X } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, ChevronRight, ChevronUp, FileText, LoaderCircle, Paperclip, Pencil, ShieldCheck, Sparkles, Square, X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CompanyClusterMap } from "@/components/company-cluster-map";
-import { assistantMessageHasRenderedToolResult, chatTitleSchema, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
+import { assistantMessageHasRenderedToolResult, chatTitleSchema, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getStopAnswer, getVisibleUserText, lastAssistantMessageHasStopCall, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
 import { questionInputSchema, questionOutputSchema, type QuestionOutput } from "@/lib/ai/question";
-import { isNearChatScrollEnd } from "@/lib/chat-scroll";
+import { isNearChatScrollEnd, updateChatAutoScrollState } from "@/lib/chat-scroll";
 import { MAX_CHAT_TITLE_LENGTH, normalizeChatTitle } from "@/lib/chat-title";
 import { extractPdf } from "@/lib/pdf/client";
 import { deleteRetainedPdf, uploadRetainedPdf, type RetainedChatPdf } from "@/lib/pdf/storage-client";
@@ -40,7 +40,6 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
   const messageStreamRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const isAutoScrollingRef = useRef(false);
-  const lastScrollTopRef = useRef(0);
   const hasMeasuredInitialScrollRef = useRef(false);
   const predictionAbortRef = useRef<AbortController | null>(null);
   const clusterAbortRef = useRef<AbortController | null>(null);
@@ -59,7 +58,8 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
       setTitleDraft(generatedTitle.data.title);
     },
     onFinish: () => router.refresh(),
-    sendAutomaticallyWhen: (options) => lastAssistantMessageIsCompleteWithApprovalResponses(options) || lastAssistantMessageIsCompleteWithToolCalls(options),
+    sendAutomaticallyWhen: (options) => lastAssistantMessageIsCompleteWithApprovalResponses(options)
+      || (lastAssistantMessageIsCompleteWithToolCalls(options) && !lastAssistantMessageHasStopCall(options.messages)),
     async onToolCall({ toolCall }) {
       if (toolCall.dynamic) return;
       if (toolCall.toolName === "runCompanyClusterMap") {
@@ -104,7 +104,6 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
 
     if (!hasMeasuredInitialScrollRef.current) {
       shouldAutoScrollRef.current = isNearChatScrollEnd(stream);
-      lastScrollTopRef.current = stream.scrollTop;
       hasMeasuredInitialScrollRef.current = true;
       return;
     }
@@ -204,18 +203,16 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
 
   function trackMessageScroll(event: React.UIEvent<HTMLDivElement>) {
     const stream = event.currentTarget;
-    const scrollTop = Math.max(0, stream.scrollTop);
-    const userScrolledUp = scrollTop < lastScrollTopRef.current;
+    const nextState = updateChatAutoScrollState({ following: shouldAutoScrollRef.current, scrolling: isAutoScrollingRef.current }, isNearChatScrollEnd(stream));
+    shouldAutoScrollRef.current = nextState.following;
+    isAutoScrollingRef.current = nextState.scrolling;
+  }
 
-    if (userScrolledUp) {
-      shouldAutoScrollRef.current = false;
-      isAutoScrollingRef.current = false;
-    } else if (!isAutoScrollingRef.current || isNearChatScrollEnd(stream)) {
-      shouldAutoScrollRef.current = isNearChatScrollEnd(stream);
-      if (shouldAutoScrollRef.current) isAutoScrollingRef.current = false;
-    }
-
-    lastScrollTopRef.current = scrollTop;
+  function cancelAutoScrollAnimation() {
+    const stream = messageStreamRef.current;
+    if (!stream || !isAutoScrollingRef.current) return;
+    isAutoScrollingRef.current = false;
+    stream.scrollTo({ top: stream.scrollTop, behavior: "auto" });
   }
 
   function beginRename() {
@@ -276,7 +273,7 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
           </div>
           <span className="privacy-pill"><ShieldCheck size={13} /> PDF retained in storage</span>
         </header>
-        <div className="message-stream" ref={messageStreamRef} onScroll={trackMessageScroll}>
+        <div className="message-stream" ref={messageStreamRef} onScroll={trackMessageScroll} onWheel={cancelAutoScrollAnimation} onTouchMove={cancelAutoScrollAnimation} onPointerDown={(event) => { if (event.target === event.currentTarget) cancelAutoScrollAnimation(); }}>
           {messages.length === 0 && <div className="chat-intro"><span className="spark-mark"><Sparkles size={22} /></span><p className="eyebrow">Start with an idea or a company</p><h2>Analyze your startup—or research public YC companies.</h2><p>Ask for company data, comparisons, or semantic cluster maps. You can also request a YC Fit Score from a typed description or retained PDF.</p></div>}
           {messages.map((message) => <ChatMessage key={message.id} message={message} availableDocuments={availableDocuments} onApproval={(id, approved) => addToolApprovalResponse({ id, approved })} onQuestionAnswer={(toolCallId, output) => addToolOutput({ tool: "askQuestion", toolCallId, output })} modelProgress={modelProgress} clusterProgress={clusterProgress} />)}
           {isGenerating && <div className="thinking"><LoaderCircle size={14} className="spin" /> Application Signal is working…</div>}
@@ -305,11 +302,16 @@ function ChatMessage({ message, availableDocuments, onApproval, onQuestionAnswer
   }
 
   const toolUiOwnsResult = assistantMessageHasRenderedToolResult(message);
+  const stopOwnsResult = message.parts.some((part) => part.type === "tool-stop");
   return <article className={`message ${message.role}`}><span className="message-role">Signal</span><div className="message-content">{message.parts.map((part, index) => {
-    if (part.type === "text" && toolUiOwnsResult) return null;
+    if (part.type === "text" && (toolUiOwnsResult || stopOwnsResult)) return null;
     if (part.type === "text") return message.role === "assistant"
       ? <div className="message-markdown" key={index}><ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown></div>
       : <p key={index}>{part.text}</p>;
+    if (part.type === "tool-stop") {
+      const answer = getStopAnswer(part);
+      return answer ? <div className="message-markdown" key={index}><ReactMarkdown remarkPlugins={[remarkGfm]}>{answer}</ReactMarkdown></div> : null;
+    }
     if (part.type.startsWith("tool-")) return <ToolCard key={index} part={part as never} availableDocuments={availableDocuments} onApproval={onApproval} onQuestionAnswer={onQuestionAnswer} modelProgress={modelProgress} clusterProgress={clusterProgress} />;
     return null;
   })}</div></article>;
@@ -339,7 +341,7 @@ function ToolCard({ part, availableDocuments, onApproval, onQuestionAnswer, mode
   const denied = part.state === "output-denied";
   const details = name === "confirm" ? { step: "01", title: typeof part.input?.title === "string" ? part.input.title : "Confirm action", copy: awaitingApproval ? "Approval requested" : denied ? "The request was cancelled." : "Permission recorded." } : name === "analyzeApplication" ? { step: "02", title: "Categorize application", copy: "Extract a fixed startup profile and page-level evidence." } : name === "runLocalFitPrediction" ? { step: "03", title: "Run local fit model", copy: "Vectorize, score, and locate the company in your browser." } : { step: "04", title: "Research and draft report", copy: "Lock the score, research five public comparables, and draft the dossier." };
   const complete = part.state === "output-available";
-  return <div className={`tool-card ${complete ? "complete" : ""}`}><div className="tool-top"><span className="tool-index">{details.step}</span><span className="tool-icon">{complete ? <Check size={16} /> : part.state.includes("error") || denied ? <X size={16} /> : awaitingApproval ? <ShieldCheck size={16} /> : <LoaderCircle size={16} className={part.state === "input-streaming" ? "spin" : ""} />}</span><div><strong>{details.title}</strong><p>{details.copy}</p></div></div>
+  return <CollapsibleToolCard part={part} title={details.title} copy={details.copy} index={details.step} icon={complete ? <Check size={16} /> : part.state.includes("error") || denied ? <X size={16} /> : awaitingApproval ? <ShieldCheck size={16} /> : <LoaderCircle size={16} className={part.state === "input-streaming" ? "spin" : ""} />} collapsible={complete}>
     {part.state === "approval-requested" && <div className="approval-box"><p><ShieldCheck size={15} /> {typeof part.input?.message === "string" ? part.input.message : "Please confirm this action."}</p>{!sourceReady && <span className="approval-warning">The source is unavailable. Start a new request.</span>}<div><button className="button-primary" disabled={!sourceReady} onClick={() => onApproval(part.approval!.id, true)}>{typeof part.input?.confirmLabel === "string" ? part.input.confirmLabel : "Confirm"}</button><button className="button-ghost" onClick={() => onApproval(part.approval!.id, false)}>{typeof part.input?.cancelLabel === "string" ? part.input.cancelLabel : "Cancel"}</button></div></div>}
     {name === "runLocalFitPrediction" && modelProgress && part.state !== "output-available" && <div className="progress-block"><span>{modelProgress.label}</span><div><i style={{ width: `${modelProgress.progress * 100}%` }} /></div></div>}
     {part.state === "output-error" && <div className="tool-error">{part.errorText}</div>}
@@ -347,13 +349,22 @@ function ToolCard({ part, availableDocuments, onApproval, onQuestionAnswer, mode
     {complete && name === "analyzeApplication" && <div className="tool-result"><span>Profile ready</span><strong>{((part.output as { profile?: { companyName?: string } } | undefined)?.profile?.companyName) ?? "Application"}</strong></div>}
     {complete && name === "runLocalFitPrediction" && <div className="tool-result"><span>YC Fit Score</span><strong>{Math.round(Number((part.output as { score?: number } | undefined)?.score ?? 0))}/100</strong></div>}
     {complete && name === "publishReport" && <Link className="report-link" href={String((part.output as { href?: string } | undefined)?.href ?? "#")} target="_blank" rel="noopener noreferrer">{(part.output as { status?: string } | undefined)?.status === "researching" ? "View research progress" : "Open the full report"} <ChevronRight size={15} /></Link>}
+  </CollapsibleToolCard>;
+}
+
+function CollapsibleToolCard({ part, title, copy, index = "YC", icon, className = "", complete = part.state === "output-available", collapsible = complete, children }: { part: RenderedToolPart; title: string; copy: string; index?: string; icon?: React.ReactNode; className?: string; complete?: boolean; collapsible?: boolean; children: React.ReactNode }) {
+  const [expanded, setExpanded] = useState(true);
+  const contentId = `tool-result-${part.toolCallId}`;
+  return <div className={`tool-card ${className} ${complete ? "complete" : ""}`.trim()}>
+    <ToolStatus part={part} title={title} copy={copy} index={index} icon={icon} expansion={collapsible ? { expanded, contentId, onToggle: () => setExpanded((current) => !current) } : undefined} />
+    <div className="tool-card-content" id={contentId} hidden={collapsible && !expanded}>{children}</div>
   </div>;
 }
 
-function ToolStatus({ part, title, copy }: { part: RenderedToolPart; title: string; copy: string }) {
+function ToolStatus({ part, title, copy, index = "YC", icon, expansion }: { part: RenderedToolPart; title: string; copy: string; index?: string; icon?: React.ReactNode; expansion?: { expanded: boolean; contentId: string; onToggle: () => void } }) {
   const complete = part.state === "output-available";
   const failed = part.state.includes("error") || part.state === "output-denied";
-  return <div className="tool-top"><span className="tool-index">YC</span><span className="tool-icon">{complete ? <Check size={16} /> : failed ? <X size={16} /> : <LoaderCircle size={16} className="spin" />}</span><div><strong>{title}</strong><p>{copy}</p></div></div>;
+  return <div className={`tool-top ${expansion ? "has-collapse" : ""}`}><span className="tool-index">{index}</span><span className="tool-icon">{icon ?? (complete ? <Check size={16} /> : failed ? <X size={16} /> : <LoaderCircle size={16} className="spin" />)}</span><div><strong>{title}</strong><p>{copy}</p></div>{expansion && <button className="tool-collapse-toggle" type="button" aria-expanded={expansion.expanded} aria-controls={expansion.contentId} aria-label={`${expansion.expanded ? "Collapse" : "Expand"} ${title} tool result`} onClick={expansion.onToggle}><span>{expansion.expanded ? "Collapse" : "Expand"}</span>{expansion.expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</button>}</div>;
 }
 
 function CompanyLookupToolCard({ part }: { part: RenderedToolPart }) {
@@ -361,24 +372,26 @@ function CompanyLookupToolCard({ part }: { part: RenderedToolPart }) {
   const complete = part.state === "output-available";
   const output = part.output as { total?: number; companies?: Array<YcCompany | { company: YcCompany; warning?: string | null }> } | undefined;
   const companies = output?.companies?.flatMap((value) => "company" in value ? [value.company] : [value]) ?? [];
-  return <div className={`tool-card company-tool-card ${complete ? "complete" : ""}`}>
-    <ToolStatus part={part} title={name === "searchYcCompanies" ? "Search YC companies" : "Load company data"} copy={complete ? `${companies.length} public compan${companies.length === 1 ? "y" : "ies"} ready` : "Reading the versioned YC directory and public profiles."} />
+  return <CollapsibleToolCard part={part} className="company-tool-card" title={name === "searchYcCompanies" ? "Search YC companies" : "Load company data"} copy={complete ? `${companies.length} public compan${companies.length === 1 ? "y" : "ies"} ready` : "Reading the versioned YC directory and public profiles."} collapsible={complete}>
     {complete && <div className="company-tool-list">{companies.slice(0, 10).map((company) => <div key={company.id}><span className="company-initial">{company.name.slice(0, 1)}</span><span><strong>{company.name}</strong><small>{company.batch} · {company.industry}</small><p>{company.oneLiner}</p></span></div>)}</div>}
     {complete && typeof output?.total === "number" && output.total > companies.length && <p className="company-tool-more">Showing {companies.length} of {output.total.toLocaleString()} matches.</p>}
     {part.state === "output-error" && <div className="tool-error">{part.errorText}</div>}
-  </div>;
+  </CollapsibleToolCard>;
 }
 
 function CompanyResearchToolCard({ part }: { part: RenderedToolPart }) {
   const complete = part.state === "output-available";
   const output = part.output as {
+    ok?: boolean;
     title?: string;
     executiveSummary?: string;
     companies?: Array<{ companyId: number; name: string; batch: string; industry: string }>;
     comparison?: Record<"sharedPatterns" | "differentiators" | "opportunities" | "risks", Array<{ text: string; sourceIds: string[] }>>;
     sources?: Array<{ id: string; title: string; url: string; kind: string; status: string }>;
     warnings?: string[];
+    error?: { code: string; message: string; stage: string; retryable: boolean; scrapeErrors: Array<{ url: string; message: string }> };
   } | undefined;
+  const failed = complete && output?.ok === false;
   const highlights = output?.comparison ? [
     ["Shared pattern", output.comparison.sharedPatterns[0]],
     ["Differentiator", output.comparison.differentiators[0]],
@@ -386,11 +399,11 @@ function CompanyResearchToolCard({ part }: { part: RenderedToolPart }) {
     ["Risk", output.comparison.risks[0]],
   ].flatMap(([label, insight]) => insight && typeof insight !== "string" ? [{ label: String(label), insight }] : []) : [];
   const usableSources = output?.sources?.filter((source) => source.status === "ok") ?? [];
-  return <div className={`tool-card company-tool-card research ${complete ? "complete" : ""}`}>
-    <ToolStatus part={part} title={complete ? output?.title ?? "Company research ready" : "Research public company sources"} copy={complete ? `${output?.companies?.length ?? 0} companies · ${usableSources.length} usable sources` : "Searching public sources and building cited company profiles."} />
-    {complete && <div className="company-research-result"><p>{output?.executiveSummary}</p><div>{output?.companies?.map((company) => <span key={company.companyId}>{company.name}<small>{company.batch}</small></span>)}</div>{highlights.length > 0 && <section className="company-research-highlights">{highlights.map(({ label, insight }) => <article key={label}><strong>{label}</strong><p>{insight.text}</p><small>{insight.sourceIds.join(" · ")}</small></article>)}</section>}{usableSources.length > 0 && <section className="company-research-citations"><strong>Public sources</strong>{usableSources.slice(0, 6).map((source) => <a href={source.url} target="_blank" rel="noreferrer" key={source.id}><span>{source.title}</span><small>{source.kind}</small></a>)}</section>}{Boolean(output?.warnings?.length) && <small>{output?.warnings?.length} source coverage note{output!.warnings!.length === 1 ? "" : "s"}</small>}</div>}
+  return <CollapsibleToolCard part={part} className="company-tool-card research" title={failed ? "Public company research failed" : complete ? output?.title ?? "Company research ready" : "Research public company sources"} copy={failed ? output?.error?.message ?? "Public web research failed." : complete ? `${output?.companies?.length ?? 0} companies · ${usableSources.length} usable sources` : "Searching public sources and building cited company profiles."} complete={complete && !failed} collapsible={complete} icon={failed ? <X size={16} /> : undefined}>
+    {failed && <div className="tool-error"><strong>{output?.error?.code}</strong>{output?.error?.scrapeErrors.map((failure) => <p key={`${failure.url}-${failure.message}`}><code>{failure.url}</code><br />{failure.message}</p>)}</div>}
+    {complete && !failed && <div className="company-research-result"><p>{output?.executiveSummary}</p><div>{output?.companies?.map((company) => <span key={company.companyId}>{company.name}<small>{company.batch}</small></span>)}</div>{highlights.length > 0 && <section className="company-research-highlights">{highlights.map(({ label, insight }) => <article key={label}><strong>{label}</strong><p>{insight.text}</p><small>{insight.sourceIds.join(" · ")}</small></article>)}</section>}{usableSources.length > 0 && <section className="company-research-citations"><strong>Public sources</strong>{usableSources.slice(0, 6).map((source) => <a href={source.url} target="_blank" rel="noreferrer" key={source.id}><span>{source.title}</span><small>{source.kind}</small></a>)}</section>}{Boolean(output?.warnings?.length) && <small>{output?.warnings?.length} source coverage note{output!.warnings!.length === 1 ? "" : "s"}</small>}</div>}
     {part.state === "output-error" && <div className="tool-error">{part.errorText}</div>}
-  </div>;
+  </CollapsibleToolCard>;
 }
 
 function CompanyMapToolCard({ part, progress }: { part: RenderedToolPart; progress: CompanyClusterProgress | null }) {
@@ -402,23 +415,21 @@ function CompanyMapToolCard({ part, progress }: { part: RenderedToolPart; progre
     fetch("/data/yc-companies.json", { signal: controller.signal }).then((response) => response.json()).then((value) => setCompanies(value as YcCompany[])).catch(() => undefined);
     return () => controller.abort();
   }, [parsed.success]);
-  return <div className={`tool-card company-map-tool ${parsed.success ? "complete" : ""}`}>
-    <ToolStatus part={part} title="Build semantic cluster map" copy={parsed.success ? `${parsed.data.points.length} companies positioned` : progress?.label ?? "Loading model and current research signals."} />
+  return <CollapsibleToolCard part={part} className="company-map-tool" title="Build semantic cluster map" copy={parsed.success ? `${parsed.data.points.length} companies positioned` : progress?.label ?? "Loading model and current research signals."} complete={parsed.success} collapsible={parsed.success}>
     {!parsed.success && progress && <div className="progress-block"><span>{progress.label}</span><div><i style={{ width: `${progress.progress * 100}%` }} /></div></div>}
     {parsed.success && companies.length > 0 && <CompanyClusterMap map={parsed.data} companies={companies} compact />}
     {parsed.success && parsed.data.warning && <div className="tool-error company-map-note">{parsed.data.warning}</div>}
     {part.state === "output-error" && <div className="tool-error">{part.errorText}</div>}
-  </div>;
+  </CollapsibleToolCard>;
 }
 
 function CompanyPublicationToolCard({ part }: { part: RenderedToolPart }) {
   const complete = part.state === "output-available";
   const output = part.output as { href?: string; title?: string; companyCount?: number; executiveSummary?: string } | undefined;
-  return <div className={`tool-card company-tool-card publication ${complete ? "complete" : ""}`}>
-    <ToolStatus part={part} title={complete ? "Private company report published" : "Publish company report"} copy={complete ? `${output?.companyCount ?? 0} companies · owner-only report` : "Validating citations, map versions, and report ownership."} />
+  return <CollapsibleToolCard part={part} className="company-tool-card publication" title={complete ? "Private company report published" : "Publish company report"} copy={complete ? `${output?.companyCount ?? 0} companies · owner-only report` : "Validating citations, map versions, and report ownership."} collapsible={complete}>
     {complete && <div className="company-publication"><strong>{output?.title}</strong><p>{output?.executiveSummary}</p><Link className="report-link" href={output?.href ?? "#"} target="_blank" rel="noopener noreferrer">Open the company report <ChevronRight size={15} /></Link></div>}
     {part.state === "output-error" && <div className="tool-error">{part.errorText}</div>}
-  </div>;
+  </CollapsibleToolCard>;
 }
 
 function UnknownToolCard({ part, name }: { part: RenderedToolPart; name: string }) {
@@ -440,7 +451,7 @@ function QuestionToolCard({ part, onAnswer }: { part: RenderedToolPart; onAnswer
   const question = parsedInput.data;
   if (part.state === "output-available" && parsedOutput.success) {
     const answer = parsedOutput.data.type === "multiple-select" ? parsedOutput.data.answers.join(", ") : parsedOutput.data.answer;
-    return <div className="tool-card question-tool complete"><div className="tool-top"><span className="tool-index">?</span><span className="tool-icon"><Check size={16} /></span><div><strong>{question.question}</strong><p>Answered</p></div></div><div className="question-answer"><span>Your answer</span><strong>{answer}</strong></div></div>;
+    return <CollapsibleToolCard part={part} className="question-tool" title={question.question} copy="Answered" index="?" icon={<Check size={16} />}><div className="question-answer"><span>Your answer</span><strong>{answer}</strong></div></CollapsibleToolCard>;
   }
 
   function submitQuestion(event: React.FormEvent) {

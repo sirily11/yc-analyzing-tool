@@ -1,13 +1,14 @@
 import "server-only";
 import { generateText, type UIMessage } from "ai";
 import { appConfig } from "@/config";
+import { getStopAnswer } from "@/lib/ai/chat-source";
 import { sanitizeGeneratedChatTitle } from "@/lib/chat-title";
 
 function messageText(message: UIMessage | undefined) {
   if (!message) return "";
   return message.parts
-    .filter((part): part is Extract<typeof part, { type: "text" }> => part.type === "text")
-    .map((part) => part.text)
+    .map((part) => part.type === "text" ? part.text : getStopAnswer(part))
+    .filter((text): text is string => typeof text === "string" && text.length > 0)
     .join(" ")
     .trim();
 }

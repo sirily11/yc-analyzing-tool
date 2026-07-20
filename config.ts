@@ -5,6 +5,10 @@ export function resolveReportModel(environment: Readonly<Record<string, string |
     ?? "openai/gpt-5-mini";
 }
 
+export function modelTemperature(model: string, temperature: number) {
+  return /(?:^|\/)gpt-5(?:[.-]|$)/i.test(model) ? undefined : temperature;
+}
+
 export const appConfig = {
   name: "Application Signal",
   description: "An independent, data-informed YC application fit explorer.",
@@ -14,7 +18,6 @@ export const appConfig = {
     process.env.AI_CHAT_MODEL ??
     "openai/gpt-5-mini",
   reportModel: resolveReportModel(),
-  maxToolSteps: 8,
   temperature: 0.2,
   pdf: {
     maxBytes: 20 * 1024 * 1024,
@@ -22,9 +25,6 @@ export const appConfig = {
     maxCharacters: 150_000,
     minCharacters: 500,
   },
-  analysisRateLimitPerHour: Number(
-    process.env.ANALYSIS_RATE_LIMIT_PER_HOUR ?? 5,
-  ),
   reportResearch: {
     comparableCompanyLimit: 5,
     websitePageLimit: 5,

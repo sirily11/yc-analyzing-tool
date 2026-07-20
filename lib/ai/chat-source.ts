@@ -25,6 +25,10 @@ export const confirmationInputSchema = z.object({
   cancelLabel: z.string().min(1).max(40).optional(),
 });
 
+export const stopInputSchema = z.object({
+  answer: z.string(),
+});
+
 export type ConfirmationAction = z.infer<typeof confirmationActionSchema>;
 
 const toolsWithCompleteResultUi = new Set([
@@ -96,11 +100,29 @@ export function latestMessageRequestsPdfAnalysis(messages: UIMessage[]) {
 
 /** Rich result cards own their presentation, so adjacent assistant prose must not repeat them. */
 export function assistantMessageHasRenderedToolResult(message: Pick<UIMessage, "role" | "parts">) {
+  const hasFailedCompanyResearch = message.parts.some((part) => {
+    if (part.type !== "tool-researchYcCompanies" || !("output" in part)) return false;
+    return Boolean(part.output && typeof part.output === "object" && "ok" in part.output && part.output.ok === false);
+  });
+  if (hasFailedCompanyResearch) return false;
   return message.role === "assistant" && message.parts.some((part) => (
     toolsWithCompleteResultUi.has(part.type)
     && "state" in part
     && part.state === "output-available"
   ));
+}
+
+export function getStopAnswer(part: { type: string; input?: unknown; output?: unknown }) {
+  if (part.type !== "tool-stop") return null;
+  const output = stopInputSchema.safeParse(part.output);
+  if (output.success) return output.data.answer;
+  const input = stopInputSchema.safeParse(part.input);
+  return input.success ? input.data.answer : null;
+}
+
+export function lastAssistantMessageHasStopCall(messages: UIMessage[]) {
+  const latest = messages.at(-1);
+  return latest?.role === "assistant" && latest.parts.some((part) => part.type === "tool-stop");
 }
 
 /** Whether the workflow started by a submitted PDF has reached a terminal tool state. */

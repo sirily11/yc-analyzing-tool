@@ -1,10 +1,18 @@
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 vi.mock("server-only", () => ({}));
-import { validateCitations } from "@/lib/analysis/company-research";
+import { companyResearchSynthesisSchema, validateCitations } from "@/lib/analysis/company-research";
 import { companyResearchDraftSchema } from "@/lib/types/company-research";
 
 describe("company research schema", () => {
+  it("keeps provider response_format free of URI formats and model-owned identity fields", () => {
+    const jsonSchema = JSON.stringify(z.toJSONSchema(companyResearchSynthesisSchema));
+    expect(jsonSchema).not.toContain('"format":"uri"');
+    expect(jsonSchema).not.toContain('"website"');
+    expect(jsonSchema).not.toContain('"slug"');
+  });
+
   it("requires citations on every material insight", () => {
     const insight = { text: "Supported public claim", sourceIds: ["c1-yc"] };
     const draft = {

@@ -1,19 +1,33 @@
 import "server-only";
 import { generateText, Output } from "ai";
 import { z } from "zod";
-import { appConfig } from "@/config";
+import { appConfig, modelTemperature } from "@/config";
+import { chatToolLog, summarizeProviderError, summarizeToolError } from "@/lib/ai/tool-log";
 import { batchScrapeFirecrawl, mapFirecrawl, searchFirecrawl, selectOfficialPages } from "@/lib/firecrawl/client";
-import { companyResearchDraftSchema, type CompanyResearchDraft, type CompanyResearchSource } from "@/lib/types/company-research";
+import { companyResearchDraftSchema, companyResearchProfileSchema, type CompanyResearchDraft, type CompanyResearchSource } from "@/lib/types/company-research";
 import type { YcCompany, YcCompanyDetail } from "@/lib/types/company";
 import { fetchYcCompanyDetail } from "@/lib/yc/company-data";
 
-const synthesisSchema = companyResearchDraftSchema.pick({
+const synthesisCompanySchema = companyResearchProfileSchema.omit({
+  name: true,
+  slug: true,
+  batch: true,
+  industry: true,
+  location: true,
+  website: true,
+});
+
+export const companyResearchSynthesisSchema = companyResearchDraftSchema.pick({
   title: true,
   executiveSummary: true,
-  companies: true,
   comparison: true,
   warnings: true,
   methodology: true,
+}).extend({
+  // Identity fields come from the versioned YC dataset after synthesis. Keeping
+  // them out of response_format avoids provider-specific URL schema formats and
+  // prevents the model from changing official company data.
+  companies: z.array(synthesisCompanySchema).min(1).max(10),
 });
 
 type Evidence = { sourceId: string; companyId: number; text: string };
@@ -66,7 +80,7 @@ function validateCitations(draft: CompanyResearchDraft) {
   }
 }
 
-export async function buildCompanyResearchDraft(input: { companies: YcCompany[]; request: string; signal?: AbortSignal }): Promise<CompanyResearchDraft> {
+export async function buildCompanyResearchDraft(input: { companies: YcCompany[]; request: string; requestId?: string; chatId?: string; signal?: AbortSignal }): Promise<CompanyResearchDraft> {
   const deadlineSignal = AbortSignal.timeout(45_000);
   const researchSignal = input.signal ? AbortSignal.any([input.signal, deadlineSignal]) : deadlineSignal;
   const retrievedAt = new Date().toISOString();
@@ -109,12 +123,7 @@ export async function buildCompanyResearchDraft(input: { companies: YcCompany[];
   });
 
   const requestedPages = [...new Set(webResults.flatMap((result) => result.pages))];
-  let scrapedPages: Awaited<ReturnType<typeof batchScrapeFirecrawl>> = [];
-  try {
-    scrapedPages = await batchScrapeFirecrawl(requestedPages, researchSignal);
-  } catch {
-    warnings.push("Firecrawl could not complete the bounded official-site scrape.");
-  }
+  const scrapedPages = await batchScrapeFirecrawl(requestedPages, researchSignal);
   const scrapedByUrl = new Map(scrapedPages.map((page) => [page.url.replace(/\/$/, ""), page]));
   let firecrawlSuccesses = 0;
 
@@ -155,13 +164,42 @@ export async function buildCompanyResearchDraft(input: { companies: YcCompany[];
 
   if (firecrawlSuccesses === 0) throw new Error("FIRECRAWL_RESEARCH_UNAVAILABLE");
 
-  const { output } = await generateText({
-    model: appConfig.analysisModel,
-    temperature: 0,
-    output: Output.object({ schema: synthesisSchema }),
-    system: `Create a conservative, citation-backed research report about the supplied public YC companies. Answer the user's requested focus. Use only the evidence objects. Every overview, product, customer, business-model, signal, comparison, opportunity, and risk statement must cite one or more exact sourceId values that support it. Never cite a failed source. Mark unknown facts instead of guessing. Do not generate a YC Fit Score, acceptance probability, admissions advice, or investment recommendation. Keep semanticText factual and compact for semantic mapping; do not include source IDs in it.`,
-    prompt: JSON.stringify({ request: input.request, companies: input.companies.map(({ id, name, slug, batch, industry, location, website }) => ({ id, name, slug, batch, industry, location, website })), evidence }),
+  const synthesisPrompt = JSON.stringify({
+    request: input.request,
+    companies: input.companies.map(({ id, name, slug, batch, industry, location, website }) => ({ id, name, slug, batch, industry, location, website })),
+    evidence,
   });
+  chatToolLog("info", "company_research.synthesis.started", {
+    requestId: input.requestId,
+    chatId: input.chatId,
+    model: appConfig.analysisModel,
+    companyCount: input.companies.length,
+    sourceCount: sources.length,
+    evidenceCount: evidence.length,
+    evidenceCharacters: evidence.reduce((total, item) => total + item.text.length, 0),
+    promptCharacters: synthesisPrompt.length,
+  });
+
+  let output: z.infer<typeof companyResearchSynthesisSchema>;
+  try {
+    ({ output } = await generateText({
+      model: appConfig.analysisModel,
+      temperature: modelTemperature(appConfig.analysisModel, 0),
+      abortSignal: researchSignal,
+      output: Output.object({ schema: companyResearchSynthesisSchema }),
+      system: `Create a conservative, citation-backed research report about the supplied public YC companies. Answer the user's requested focus. Use only the evidence objects. Every overview, product, customer, business-model, signal, comparison, opportunity, and risk statement must cite one or more exact sourceId values that support it. Never cite a failed source. Mark unknown facts instead of guessing. Do not generate a YC Fit Score, acceptance probability, admissions advice, or investment recommendation. Keep semanticText factual and compact for semantic mapping; do not include source IDs in it.`,
+      prompt: synthesisPrompt,
+    }));
+  } catch (cause) {
+    chatToolLog("error", "company_research.synthesis.failed", {
+      requestId: input.requestId,
+      chatId: input.chatId,
+      model: appConfig.analysisModel,
+      ...summarizeToolError(cause),
+      ...summarizeProviderError(cause),
+    });
+    throw cause;
+  }
 
   const byId = new Map(input.companies.map((company) => [company.id, company]));
   const profiles = output.companies.map((profile) => {

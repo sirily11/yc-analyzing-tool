@@ -8,11 +8,13 @@ import { categorizeApplication } from "@/lib/analysis/server";
 import { buildCompanyResearchDraft } from "@/lib/analysis/company-research";
 import { generatedApplicationProfileSchema, predictionResultSchema, sourceFileMetadataSchema, type ExtractedPdf } from "@/lib/types/analysis";
 import { companyClusterMapSchema, companyResearchDraftSchema, companyResearchMapInputSchema, companyResearchReportDocumentSchema } from "@/lib/types/company-research";
-import { assertWithinRateLimit, completeCompanyResearchReport, createCompanyResearchReport, createReport, failCompanyResearchReport, failReport, getCompanyResearchReport, getReadyChatDocument, getReport, storeCompanyResearchDraft } from "@/lib/db/repository";
+import { completeCompanyResearchReport, createCompanyResearchReport, createReport, failCompanyResearchReport, failReport, getCompanyResearchReport, getReadyChatDocument, getReport, storeCompanyResearchDraft } from "@/lib/db/repository";
+import { FirecrawlScrapeError } from "@/lib/firecrawl/client";
 import { readRetainedDocument } from "@/lib/storage/chat-documents";
 import { companySearchInputSchema, filterYcCompanies, getYcCompaniesByIds, loadYcCompanies } from "@/lib/yc/companies";
 import { fetchYcCompanyDetail } from "@/lib/yc/company-data";
-import { confirmationInputSchema, type ConfirmationAction } from "@/lib/ai/chat-source";
+import { confirmationInputSchema, stopInputSchema, type ConfirmationAction } from "@/lib/ai/chat-source";
+import { chatToolLog, summarizeToolError } from "@/lib/ai/tool-log";
 import { startReportResearch } from "@/lib/research/report-research";
 
 const sourceFileSchema = sourceFileMetadataSchema.extend({ kind: z.literal("pdf").optional() });
@@ -22,7 +24,38 @@ const analysisSourceSchema = z.union([
   z.object({ sourceKind: z.literal("chat"), title: z.string().min(1).max(80).optional(), parentReportId: z.string().nullable().optional() }),
 ]);
 
-export function createAnalysisTools(context: { userId: string; chatId: string; chatText: string | null; approvedActions: ReadonlySet<ConfirmationAction>; requestSignal?: AbortSignal }) {
+function companyResearchFailureResult(cause: unknown, stage: string, reportId: string | undefined) {
+  const summary = summarizeToolError(cause);
+  const scrapeErrors = cause instanceof FirecrawlScrapeError ? cause.failures.slice(0, 20) : [];
+  const status = summary.errorCode.match(/:(\d{3})$/)?.[1];
+  const message = scrapeErrors.length > 0
+    ? `Firecrawl failed to scrape ${scrapeErrors.length} requested public page${scrapeErrors.length === 1 ? "" : "s"}. Company research stopped before synthesis.`
+    : summary.errorCode === "FIRECRAWL_NOT_CONFIGURED"
+      ? "Firecrawl is not configured, so public company research could not start."
+      : summary.errorCode === "FIRECRAWL_RESEARCH_UNAVAILABLE"
+        ? "Firecrawl returned no usable public sources. Company research stopped before synthesis."
+        : status
+          ? `Firecrawl returned HTTP ${status}. Company research stopped before synthesis.`
+          : "Company research failed before a report draft could be created.";
+  const retryable = summary.errorCode === "TIMEOUT"
+    || summary.errorCode === "FIRECRAWL_SCRAPE_FAILED"
+    || summary.errorCode.endsWith(":408")
+    || summary.errorCode.endsWith(":429")
+    || /^FIRECRAWL_REQUEST_FAILED:5\d\d$/.test(summary.errorCode);
+  return {
+    ok: false as const,
+    reportId: reportId ?? null,
+    error: {
+      code: summary.errorCode,
+      message,
+      stage,
+      retryable,
+      scrapeErrors,
+    },
+  };
+}
+
+export function createAnalysisTools(context: { userId: string; chatId: string; chatText: string | null; approvedActions: ReadonlySet<ConfirmationAction>; requestId: string; requestSignal?: AbortSignal }) {
   const approvedActions = new Set(context.approvedActions);
   return {
     askQuestion: tool({
@@ -37,7 +70,7 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
       execute: async () => ({ confirmed: true }),
     }),
     analyzeApplication: tool({
-      description: "Categorize the confirmed source into the fixed Application Signal schema. Never call this before confirm returns confirmed.",
+      description: "Categorize the user's own confirmed startup application from a PDF or typed chat brief. Never use this tool for public YC company lookup or company research, and never call it before application-analysis confirmation.",
       inputSchema: analysisSourceSchema,
       execute: async (input) => {
         if (!approvedActions.has("application-analysis")) throw new Error("ANALYSIS_CONFIRMATION_REQUIRED");
@@ -65,7 +98,6 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
           };
         }
 
-        await assertWithinRateLimit(context.userId);
         const title = `${source.metadata.name.replace(/\.pdf$/i, "")} · Analysis`;
         const reportId = await createReport({ userId: context.userId, chatId: context.chatId, sourceFile: source.metadata, sourceDocumentId: input.sourceKind === "chat" ? null : input.documentId, title, parentReportId: input.parentReportId });
         let profile;
@@ -119,30 +151,60 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
       },
     }),
     researchYcCompanies: tool({
-      description: "After a company-research confirmation, use Firecrawl and public YC sources to create a cited research draft for one to ten exact YC company IDs. Then call runCompanyClusterMap with the exact returned reportId.",
+      description: "After a company-research confirmation, use Firecrawl and public YC sources to create a cited research draft for one to ten exact YC company IDs. This tool never accepts or requires a PDF. If it returns ok false, report its error and scrapeErrors to the user without retrying or calling another research tool. If it returns ok true, call runCompanyClusterMap with the exact returned reportId.",
       inputSchema: z.object({
         companyIds: z.array(z.number().int()).min(1).max(10),
         request: z.string().min(1).max(1_000),
       }),
       execute: async ({ companyIds, request }) => {
-        if (!approvedActions.has("company-research")) throw new Error("COMPANY_RESEARCH_CONFIRMATION_REQUIRED");
+        const hasApproval = approvedActions.has("company-research");
+        chatToolLog(hasApproval ? "info" : "warn", "company_research.authorization", {
+          requestId: context.requestId,
+          chatId: context.chatId,
+          hasApproval,
+          approvedActions: [...approvedActions],
+          companyIds,
+          requestLength: request.length,
+        });
+        if (!hasApproval) throw new Error("COMPANY_RESEARCH_CONFIRMATION_REQUIRED");
         approvedActions.delete("company-research");
-        await assertWithinRateLimit(context.userId);
-        const uniqueIds = [...new Set(companyIds)];
-        const companies = await getYcCompaniesByIds(uniqueIds);
-        const reportId = await createCompanyResearchReport({ userId: context.userId, chatId: context.chatId, request, companyIds: uniqueIds });
+        let stage = "company_lookup";
+        let reportId: string | undefined;
         try {
-          const draft = await buildCompanyResearchDraft({ companies, request, signal: context.requestSignal });
+          const uniqueIds = [...new Set(companyIds)];
+          const companies = await getYcCompaniesByIds(uniqueIds);
+          stage = "report_create";
+          reportId = await createCompanyResearchReport({ userId: context.userId, chatId: context.chatId, request, companyIds: uniqueIds });
+          stage = "public_research";
+          const draft = await buildCompanyResearchDraft({ companies, request, requestId: context.requestId, chatId: context.chatId, signal: context.requestSignal });
           const officialCompanyIds = new Set(draft.sources.filter((source) => source.kind === "official-site" && source.status === "ok").map((source) => source.companyId));
+          stage = "map_prepare";
           const mapInput = companyResearchMapInputSchema.parse({
             reportId,
             targets: draft.companies.map((company) => ({ companyId: company.companyId, semanticText: company.semanticText, textSource: officialCompanyIds.has(company.companyId) ? "firecrawl" : "dataset" })),
           });
+          stage = "draft_store";
           if (!await storeCompanyResearchDraft({ id: reportId, userId: context.userId, draft, mapInput })) throw new Error("COMPANY_RESEARCH_NOT_STORABLE");
-          return { reportId, title: draft.title, executiveSummary: draft.executiveSummary, companies: draft.companies, comparison: draft.comparison, sources: draft.sources, warnings: draft.warnings };
+          chatToolLog("info", "company_research.completed", {
+            requestId: context.requestId,
+            chatId: context.chatId,
+            reportId,
+            companyCount: draft.companies.length,
+            sourceCount: draft.sources.length,
+            warningCount: draft.warnings.length,
+          });
+          return { ok: true as const, reportId, title: draft.title, executiveSummary: draft.executiveSummary, companies: draft.companies, comparison: draft.comparison, sources: draft.sources, warnings: draft.warnings };
         } catch (cause) {
-          await failCompanyResearchReport(reportId, context.userId, cause instanceof Error ? cause.message.slice(0, 120) : "COMPANY_RESEARCH_FAILED");
-          throw cause;
+          chatToolLog("error", "company_research.failed", {
+            requestId: context.requestId,
+            chatId: context.chatId,
+            reportId,
+            stage,
+            ...summarizeToolError(cause),
+          });
+          if (reportId) await failCompanyResearchReport(reportId, context.userId, cause instanceof Error ? cause.message.slice(0, 120) : "COMPANY_RESEARCH_FAILED");
+          if (context.requestSignal?.aborted || summarizeToolError(cause).errorCode === "ABORTED") throw cause;
+          return companyResearchFailureResult(cause, stage, reportId);
         }
       },
     }),
@@ -166,6 +228,12 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
         if (!await completeCompanyResearchReport({ id: reportId, userId: context.userId, map, document })) throw new Error("COMPANY_REPORT_NOT_PUBLISHABLE");
         return { reportId, href: `/company-reports/${reportId}`, title: document.title, companyCount: document.companies.length, executiveSummary: document.executiveSummary };
       },
+    }),
+    stop: tool({
+      description: "Finish the current response only after all required work is complete. Put the complete user-visible Markdown answer in answer, or use an empty answer when a rich result card already contains the complete response. Call this as the only tool in the final step.",
+      inputSchema: stopInputSchema,
+      outputSchema: stopInputSchema,
+      execute: async (input) => input,
     }),
   };
 }

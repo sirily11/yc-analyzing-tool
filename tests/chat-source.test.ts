@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UIMessage } from "ai";
-import { approvedConfirmationActions, assistantMessageHasRenderedToolResult, collectChatAnalysisText, confirmationInputSchema, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, hasApprovedConfirmation, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
+import { approvedConfirmationActions, assistantMessageHasRenderedToolResult, collectChatAnalysisText, confirmationInputSchema, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getStopAnswer, getVisibleUserText, hasApprovedConfirmation, lastAssistantMessageHasStopCall, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart, stopInputSchema, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
 
 const attachment = {
   documentId: "0de282a1-3730-4d19-ad55-aac1a45da748",
@@ -44,11 +44,32 @@ describe("chat analysis source", () => {
       { type: "text", text: "Here is the same company list again." },
     ] } as UIMessage;
     const failed = { id: "failed", role: "assistant", parts: [{ type: "tool-searchYcCompanies", toolCallId: "search", state: "output-error", input: {}, errorText: "Search failed" }] } as UIMessage;
+    const visibleResearchFailure = { id: "research-failed", role: "assistant", parts: [
+      { type: "tool-searchYcCompanies", toolCallId: "search", state: "output-available", input: {}, output: { companies: [] } },
+      { type: "tool-researchYcCompanies", toolCallId: "research", state: "output-available", input: {}, output: { ok: false, error: { code: "FIRECRAWL_SCRAPE_FAILED", message: "Scrape failed" } } },
+      { type: "text", text: "Firecrawl could not scrape the requested pages." },
+    ] } as UIMessage;
     const unknown = { id: "unknown", role: "assistant", parts: [{ type: "tool-customTool", toolCallId: "custom", state: "output-available", input: {}, output: {} }] } as UIMessage;
 
     expect(assistantMessageHasRenderedToolResult(rendered)).toBe(true);
     expect(assistantMessageHasRenderedToolResult(failed)).toBe(false);
+    expect(assistantMessageHasRenderedToolResult(visibleResearchFailure)).toBe(false);
     expect(assistantMessageHasRenderedToolResult(unknown)).toBe(false);
+  });
+
+  it("reads the terminal answer and detects that the agent explicitly stopped", () => {
+    const stopped = { id: "stopped", role: "assistant", parts: [{
+      type: "tool-stop",
+      toolCallId: "stop-1",
+      state: "output-available",
+      input: { answer: "**Final answer**" },
+      output: { answer: "**Final answer**" },
+    }] } as UIMessage;
+
+    expect(stopInputSchema.safeParse({ answer: "" }).success).toBe(true);
+    expect(getStopAnswer(stopped.parts[0])).toBe("**Final answer**");
+    expect(lastAssistantMessageHasStopCall([stopped])).toBe(true);
+    expect(lastAssistantMessageHasStopCall([{ id: "user", role: "user", parts: [{ type: "text", text: "Continue" }] }])).toBe(false);
   });
 
   it("keeps PDF metadata structured while exposing only the refined request", () => {

@@ -294,7 +294,7 @@ a { color: inherit; text-decoration: none; }
 .chat-title-form input:focus { border-color: var(--ink); }
 .chat-title-form button:disabled, .chat-title button:disabled { cursor: default; opacity: .45; }
 .chat-title-error { display: block; margin-top: 4px; color: #8d3018; font-size: 9px; }
-.message-stream { flex: 1; overflow-y: auto; padding: 42px max(20px, calc((100% - 720px) / 2)); }
+.message-stream { flex: 1; overflow-anchor: none; overflow-y: auto; padding: 42px max(20px, calc((100% - 720px) / 2)); }
 .chat-intro { max-width: 590px; margin: 7vh auto; text-align: center; }
 .spark-mark { width: 48px; height: 48px; margin: 0 auto 22px; border: 1px solid var(--line); display: grid; place-items: center; color: var(--accent); }
 .chat-intro .eyebrow { color: var(--accent); }
@@ -342,6 +342,10 @@ a { color: inherit; text-decoration: none; }
 .tool-card.complete .tool-icon { color: var(--green); border-color: var(--green); }
 .tool-top strong { font-size: 12px; }
 .tool-top p { color: var(--muted); font-size: 10px; margin: 3px 0 0; }
+.tool-top.has-collapse { grid-template-columns: 29px 31px minmax(0,1fr) auto; }
+.tool-collapse-toggle { align-items: center; align-self: stretch; background: transparent; border: 0; color: var(--muted); cursor: pointer; display: flex; font-family: var(--mono); font-size: 8px; gap: 4px; letter-spacing: .05em; padding: 0 0 0 10px; text-transform: uppercase; }
+.tool-collapse-toggle:hover { color: var(--ink); }
+.tool-collapse-toggle:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
 .approval-box { border-top: 1px solid var(--line); padding: 14px; background: rgba(255,255,255,.2); }
 .approval-box > p { display: flex; align-items: center; gap: 7px; margin: 0 0 13px; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .approval-box > div { display: flex; gap: 8px; }

@@ -25,16 +25,13 @@ function errorDetails(error: unknown) {
 export function chatToolErrorMessage(error: unknown) {
   const details = errorDetails(error);
   if (details.includes("COMPANY_RESEARCH_CONFIRMATION_REQUIRED")) {
-    return "Approve company research before starting it. A PDF is not required.";
+    return "Company research approval was not available for this tool call.";
   }
   if (details.includes("FIRECRAWL_NOT_CONFIGURED")) {
-    return "Public company research is not configured on the server yet. A PDF is not required.";
+    return "Public company research is not configured on the server yet.";
   }
   if (details.includes("FIRECRAWL_RESEARCH_UNAVAILABLE")) {
-    return "No usable live public sources were retrieved for this company research. A PDF is not required.";
-  }
-  if (details.includes("ANALYSIS_RATE_LIMIT")) {
-    return "The hourly analysis limit has been reached. Please retry later.";
+    return "No usable live public sources were retrieved for this company research.";
   }
   if (details.includes("YC_COMPANY_NOT_FOUND")) {
     return "One or more selected YC companies are unavailable in the active 2022–2026 dataset.";

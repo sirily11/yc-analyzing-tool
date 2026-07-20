@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
 import type { UIMessage } from "ai";
 import { appConfig } from "@/config";
 import { DEFAULT_CHAT_TITLE } from "@/lib/chat-title";
@@ -264,13 +264,4 @@ export async function getCompanyResearchMapInput(userId: string, chatId: string,
 
 export async function listCompanyResearchReports(userId: string) {
   return db.select().from(companyResearchReports).where(eq(companyResearchReports.userId, userId)).orderBy(desc(companyResearchReports.createdAt));
-}
-
-export async function assertWithinRateLimit(userId: string) {
-  const since = new Date(Date.now() - 60 * 60 * 1000);
-  const [applicationRuns, companyRuns] = await Promise.all([
-    db.select({ id: analysisRuns.id }).from(analysisRuns).where(and(eq(analysisRuns.userId, userId), gte(analysisRuns.createdAt, since))),
-    db.select({ id: companyResearchReports.id }).from(companyResearchReports).where(and(eq(companyResearchReports.userId, userId), gte(companyResearchReports.createdAt, since))),
-  ]);
-  if (applicationRuns.length + companyRuns.length >= appConfig.analysisRateLimitPerHour) throw new Error("ANALYSIS_RATE_LIMIT");
 }
