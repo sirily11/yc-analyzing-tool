@@ -28,6 +28,7 @@ async function categorize(company: YcCompany) {
         output: Output.object({ schema }),
         system: "Categorize public startup directory text conservatively. Do not invent traction, team, or business-model facts. Mark missing values explicitly.",
         prompt: JSON.stringify({ name: company.name, oneLiner: company.oneLiner, industry: company.industry, subindustry: company.subindustry, targetMarket: company.targetMarket, geography: company.operatingArea }),
+        providerOptions: { gateway: { tags: ["application-signal", "offline-categorization"] } },
       });
       return { id: company.id, ...output };
     } catch (error) {

@@ -5,6 +5,7 @@
     "": {
       "name": "yc-application-signal",
       "dependencies": {
+        "@ai-sdk/gateway": "3.0.153",
         "@ai-sdk/react": "3.0.232",
         "@aws-sdk/client-s3": "^3.1090.0",
         "@aws-sdk/s3-request-presigner": "^3.1090.0",
@@ -25,6 +26,7 @@
         "react-dom": "19.2.7",
         "react-markdown": "10.1.0",
         "remark-gfm": "4.0.1",
+        "stripe": "^22.3.2",
         "umap-js": "^1.4.0",
         "workflow": "^4.6.0",
         "zod": "4.4.3",
@@ -1515,6 +1517,8 @@
     "strip-dirs": ["strip-dirs@3.0.0", "", { "dependencies": { "inspect-with-kind": "^1.0.5", "is-plain-obj": "^1.1.0" } }, "sha512-I0sdgcFTfKQlUPZyAqPJmSG3HLO9rWDFnxonnIbskYNM3DwFOeTNB5KzVq3dA1GdRAc/25b5Y7UO2TQfKWw4aQ=="],
 
     "strip-final-newline": ["strip-final-newline@2.0.0", "", {}, "sha512-BrpvfNAE3dcvq7ll3xVumzjKjZQ5tI1sEUIKr3Uoks0XUl45St3FlatVqef9prk4jRDzhW6WZg+3bk93y6pLjA=="],
+
+    "stripe": ["stripe@22.3.2", "", { "peerDependencies": { "@types/node": ">=18" }, "optionalPeers": ["@types/node"] }, "sha512-O13QOvgEIQvDlTy6Ubb5kB980wpbhmoZNsgCXKILjCMZS67f+bW+6w99k3gnSi/N1lkryoj1WYdpGT5Wc5edjg=="],
 
     "strtok3": ["strtok3@10.3.5", "", { "dependencies": { "@tokenizer/token": "^0.3.0" } }, "sha512-ki4hZQfh5rX0QDLLkOCj+h+CVNkqmp/CMf8v8kZpkNVK6jGQooMytqzLZYUVYIZcFZ6yDB70EfD8POcFXiF5oA=="],
 

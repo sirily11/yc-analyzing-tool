@@ -125,6 +125,7 @@ Ignore and never reproduce names, age, gender, ethnicity, nationality, named sch
       founderCount: raw.founderCount,
       biographies: raw.biographies,
     }),
+    providerOptions: { gateway: { tags: ["application-signal", "offline-founder-enrichment"] } },
   }));
   const countBand = founderCountBand(raw.founderCount);
   const normalized = {

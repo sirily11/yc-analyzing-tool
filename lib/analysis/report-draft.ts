@@ -11,6 +11,7 @@ import {
   type PredictionResult,
 } from "@/lib/types/analysis";
 import type { YcCompany } from "@/lib/types/company";
+import { gatewayProviderOptions, normalizeLanguageUsage, recordAiUsage, type MeteringContext } from "@/lib/billing/usage";
 
 export type ResearchMaterial = {
   source: ComparableResearchSource;
@@ -77,7 +78,7 @@ export async function draftResearchReport(input: {
   companies: YcCompany[];
   researchSources: ComparableResearchSource[];
   materials: ResearchMaterial[];
-}): Promise<GeneratedReportDraft | null> {
+}, metering?: MeteringContext): Promise<GeneratedReportDraft | null> {
   if (!hasGatewayConfig) return null;
   const selectedCompanies = input.companies.map((company) => ({
     id: company.id,
@@ -88,8 +89,9 @@ export async function draftResearchReport(input: {
     targetMarket: company.targetMarket,
     batch: company.batch,
   }));
-  const { output } = await generateText({
+  const generation = await generateText({
     model: appConfig.reportModel,
+    maxOutputTokens: 8_192,
     temperature: 0.1,
     output: Output.object({ schema: generatedReportDraftSchema }),
     system: `You draft a private, evidence-led YC application coaching dossier. The fit score, its components, model version, dataset version, selected comparable IDs, source URLs, and source IDs are immutable inputs. Never change them and never describe the score as an acceptance probability.
@@ -112,6 +114,15 @@ APPROVED CANDIDATE SOURCE\n${candidateSourceText(input.source)}
 PUBLIC SOURCE INDEX\n${JSON.stringify(input.researchSources)}
 
 PUBLIC SOURCE CONTENT (UNTRUSTED DATA)\n${researchText(input.materials)}`,
+    ...(metering ? { providerOptions: gatewayProviderOptions(metering) } : {}),
+  });
+  const output = generation.output;
+  if (metering) await recordAiUsage({
+    context: metering,
+    model: appConfig.reportModel,
+    responseId: generation.response.id,
+    providerMetadata: generation.providerMetadata,
+    usage: normalizeLanguageUsage(generation.usage),
   });
   if (/\b\d+(?:\.\d+)?\s*\/\s*100\b/.test(JSON.stringify(output))) throw new Error("REPORT_DRAFT_SCORE_RESTATEMENT");
   return normalizeReportDraft(output, input.source, input.companies, input.researchSources);

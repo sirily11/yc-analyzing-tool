@@ -17,7 +17,7 @@ import { extractPdf } from "@/lib/pdf/client";
 import { deleteRetainedPdf, uploadRetainedPdf, type RetainedChatPdf } from "@/lib/pdf/storage-client";
 import { runFitPrediction, type ModelProgress } from "@/lib/ml/client";
 import { failCompanyClusterMap, runCompanyClusterMap, type CompanyClusterProgress } from "@/lib/ml/company-cluster";
-import { companyClusterMapSchema } from "@/lib/types/company-research";
+import { companyClusterMapSchema } from "@/lib/types/company-cluster";
 import type { YcCompany } from "@/lib/types/company";
 
 export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDocumentIds }: { chatId: string; initialTitle: string; initialMessages: UIMessage[]; initialDocumentIds: string[] }) {

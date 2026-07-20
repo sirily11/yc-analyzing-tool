@@ -218,6 +218,7 @@ a { color: inherit; text-decoration: none; }
 .app-nav { display: grid; gap: 4px; margin: 40px 0 28px; }
 .app-nav a { display: flex; align-items: center; gap: 9px; padding: 10px; font-size: 12px; border: 1px solid transparent; }
 .app-nav a:hover { border-color: var(--line); background: rgba(255,255,255,.2); }
+.app-nav .credits-nav-link strong { margin-left: auto; color: var(--accent-dark); font-family: var(--mono); font-size: 9px; }
 .sidebar-section { flex: 1; min-height: 0; }
 .sidebar-heading { display: flex; justify-content: space-between; align-items: center; color: var(--muted); padding: 0 9px 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .08em; font-size: 9px; }
 .sidebar-heading a { display: grid; place-items: center; }
@@ -255,6 +256,48 @@ a { color: inherit; text-decoration: none; }
 .user-block small { font-size: 9px; color: var(--muted); margin-top: 2px; }
 .user-block button { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 4px; }
 .app-main { min-width: 0; }
+
+.credits-page { max-width: 1280px; margin: 0 auto; padding: 50px 42px 80px; }
+.credits-header { display: grid; grid-template-columns: minmax(0,1fr) 250px; gap: 48px; align-items: end; padding-bottom: 34px; border-bottom: 1px solid var(--line); }
+.credits-header h1 { margin: 8px 0 10px; font-family: var(--serif); font-size: clamp(48px,7vw,86px); line-height: .9; font-weight: 500; letter-spacing: -.055em; }
+.credits-header p { max-width: 600px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.credit-balance-card { border: 1px solid var(--ink); padding: 22px; background: var(--paper); }
+.credit-balance-card span, .credit-balance-card small { display: block; color: var(--muted); font-family: var(--mono); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+.credit-balance-card strong { display: block; margin: 10px 0 6px; font-family: var(--serif); font-size: 43px; font-weight: 500; line-height: 1; }
+.credits-notice { margin-top: 24px; border: 1px solid var(--gold); padding: 13px 15px; background: rgba(184,139,60,.08); font-size: 12px; }
+.credits-notice.success { border-color: var(--green); background: rgba(49,95,73,.08); }
+.credits-section { padding-top: 42px; }
+.credits-section-heading { display: flex; justify-content: space-between; gap: 20px; align-items: baseline; margin-bottom: 16px; }
+.credits-section-heading p { margin: 0; color: var(--muted); font-size: 11px; }
+.credit-pack-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.credit-pack-card { min-width: 0; padding: 25px 22px 22px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: rgba(255,255,255,.18); }
+.credit-pack-card > strong { display: block; margin-top: 30px; font-family: var(--serif); font-size: 38px; font-weight: 500; line-height: 1; }
+.credit-pack-card > p { margin: 4px 0 24px; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.credit-pack-price { padding-top: 14px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 11px; }
+.credit-pack-card button { width: 100%; margin-top: 18px; }
+.credits-error { color: #8d3018; font-size: 11px; }
+.credits-history-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; }
+.credit-list { border-top: 1px solid var(--line); }
+.credit-row { display: flex; justify-content: space-between; gap: 18px; align-items: center; min-height: 63px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.credit-row strong, .credit-row small { display: block; }
+.credit-row strong { font-size: 12px; }
+.credit-row small { margin-top: 4px; color: var(--muted); font-family: var(--mono); font-size: 8px; text-transform: uppercase; }
+.credit-row > b { color: #8d3018; font-family: var(--mono); font-size: 11px; }
+.credit-row > b.positive { color: var(--green); }
+.invoice-links { display: flex; gap: 10px; align-items: center; }
+.invoice-links a { border-bottom: 1px solid currentColor; color: var(--accent-dark); font-family: var(--mono); font-size: 9px; text-transform: uppercase; }
+.credits-empty { padding: 20px 0; color: var(--muted); font-size: 11px; border-bottom: 1px solid var(--line); }
+
+@media (max-width: 900px) {
+  .credits-page { padding: 32px 22px 60px; }
+  .credits-header { grid-template-columns: 1fr; gap: 24px; }
+  .credit-pack-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .credits-history-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 560px) {
+  .credit-pack-grid { grid-template-columns: 1fr; }
+}
 .app-sidebar-loading .brand, .app-sidebar-loading .app-nav { flex: 0 0 auto; }
 .sidebar-loading-lines { display: grid; gap: 16px; padding: 11px 9px; }
 .sidebar-loading-lines span, .sidebar-loading-user i { display: block; position: relative; overflow: hidden; background: var(--paper-deep); }

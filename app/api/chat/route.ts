@@ -10,6 +10,10 @@ import { createAnalysisTools } from "@/lib/ai/tools";
 import { approvedConfirmationActions, chatDataSchemas, collectChatAnalysisText, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart } from "@/lib/ai/chat-source";
 import { DEFAULT_CHAT_TITLE } from "@/lib/chat-title";
 import { getChat, renameChatIfTitleMatches, replaceMessages } from "@/lib/db/repository";
+import { billingConfig, reserveWithMargin } from "@/lib/billing/config";
+import { InsufficientCreditsError, insufficientCreditsResponse } from "@/lib/billing/errors";
+import { closeReservation, reserveCredits } from "@/lib/billing/repository";
+import { gatewayProviderOptions, normalizeLanguageUsage, recordAiUsage } from "@/lib/billing/usage";
 
 export const maxDuration = 60;
 
@@ -21,6 +25,20 @@ export async function POST(request: Request) {
   const chat = await getChat(user.id, body.id);
   if (!chat) return Response.json({ error: "Chat not found" }, { status: 404 });
   const requestId = randomUUID();
+  let reservation;
+  try {
+    reservation = await reserveCredits({
+      userId: user.id,
+      operationKey: `chat:${user.id}:${requestId}`,
+      feature: "Chat",
+      points: reserveWithMargin(billingConfig.chatReservationPoints),
+      scopeId: chat.id,
+    });
+  } catch (cause) {
+    if (cause instanceof InsufficientCreditsError) return insufficientCreditsResponse(cause);
+    throw cause;
+  }
+  const metering = { userId: user.id, reservationId: reservation?.id ?? null, feature: "Chat", operationId: requestId };
   const chatText = collectChatAnalysisText(body.messages);
   const approvedActions = approvedConfirmationActions(body.messages);
   chatToolLog("info", "request.started", {
@@ -30,10 +48,10 @@ export async function POST(request: Request) {
     approvedActions: [...approvedActions],
     toolStates: summarizePersistedToolStates(body.messages),
   });
-  const tools = createAnalysisTools({ userId: user.id, chatId: chat.id, chatText, approvedActions, requestId, requestSignal: request.signal });
+  const tools = createAnalysisTools({ userId: user.id, chatId: chat.id, chatText, approvedActions, requestId, requestSignal: request.signal, reservationId: reservation?.id });
   const messages = await validateUIMessages({ messages: body.messages, dataSchemas: chatDataSchemas, tools: tools as unknown as Parameters<typeof validateUIMessages>[0]["tools"] });
   const titleTask = chat.title === DEFAULT_CHAT_TITLE
-    ? generateChatTitle(messages)
+    ? generateChatTitle(messages, { ...metering, feature: "Chat title" })
       .then((title) => title ? renameChatIfTitleMatches(user.id, chat.id, DEFAULT_CHAT_TITLE, title) : null)
       .catch((cause) => {
         console.error("Failed to generate the initial chat title", cause);
@@ -46,6 +64,7 @@ export async function POST(request: Request) {
     model: appConfig.chatModel,
     abortSignal: request.signal,
     temperature: modelTemperature(appConfig.chatModel, appConfig.temperature),
+    maxOutputTokens: 4_096,
     stopWhen: hasToolCall("stop"),
     system: `You are Application Signal, a concise startup application analyst. Render normal answers in clear GitHub-flavored Markdown. Never claim to predict YC acceptance probability. The only score is a YC Fit Score.
 
@@ -65,7 +84,8 @@ When the user asks to analyze, compare, research, report on, or build a semantic
     messages: modelMessages,
     tools,
     toolChoice: requiresPdfApproval ? { type: "tool", toolName: "confirm" } : "required",
-    onStepFinish: ({ finishReason, toolCalls, toolResults }) => {
+    providerOptions: gatewayProviderOptions(metering),
+    onStepFinish: async ({ finishReason, toolCalls, toolResults, response, usage, providerMetadata }) => {
       chatToolLog("info", "step.finished", {
         requestId,
         chatId: chat.id,
@@ -73,6 +93,19 @@ When the user asks to analyze, compare, research, report on, or build a semantic
         toolCalls: toolCalls.map(summarizeToolCall),
         toolResultCount: toolResults.length,
       });
+      // Metering must never abort the run: a rejection here tears down streamText
+      // before onFinish, which is the only place completed messages are persisted.
+      try {
+        await recordAiUsage({
+          context: metering,
+          model: appConfig.chatModel,
+          responseId: response.id,
+          providerMetadata,
+          usage: normalizeLanguageUsage(usage),
+        });
+      } catch (cause) {
+        chatToolLog("error", "usage.metering.failed", { requestId, chatId: chat.id, ...summarizeToolError(cause) });
+      }
     },
     experimental_onToolCallStart: ({ stepNumber, toolCall }) => {
       chatToolLog("info", "tool.execution.started", { requestId, chatId: chat.id, stepNumber, ...summarizeToolCall(toolCall) });
@@ -89,17 +122,34 @@ When the user asks to analyze, compare, research, report on, or build a semantic
     },
     onError: ({ error }) => {
       chatToolLog("error", "stream.failed", { requestId, chatId: chat.id, ...summarizeToolError(error) });
+      if (reservation) void closeReservation({ reservationId: reservation.id, userId: user.id, success: false });
     },
   });
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       writer.merge(result.toUIMessageStream({
         originalMessages: messages,
+        // Without this the response message carries no id, and persisting it violates
+        // the messages primary key. The SDK only supplies one when resuming an
+        // existing assistant message.
+        generateMessageId: () => randomUUID(),
         onFinish: async ({ messages: finished }) => {
-          await persistChatCompletion(
+          await titleTask;
+          const persisted = await persistChatCompletion(
             () => replaceMessages(user.id, chat.id, finished),
-            { onFailure: (cause) => console.error("Failed to persist completed chat stream", cause) },
+            {
+              onFailure: (cause) => chatToolLog("error", "chat.persist.failed", {
+                requestId,
+                chatId: chat.id,
+                messageCount: finished.length,
+                roles: finished.map((message) => message.role),
+                ...summarizeToolError(cause),
+                cause: cause instanceof Error ? `${cause.name}: ${cause.message}` : String(cause),
+              }),
+            },
           );
+          if (persisted) chatToolLog("info", "chat.persist.completed", { requestId, chatId: chat.id, messageCount: finished.length });
+          if (reservation) await closeReservation({ reservationId: reservation.id, userId: user.id, success: true });
         },
         onError: chatToolErrorMessage,
       }));

@@ -1,10 +1,12 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import type { Client, InStatement, ResultSet, Row, Value } from "@libsql/client";
 import { embed } from "ai";
 import { z } from "zod";
 import { client } from "@/lib/db";
 import type { DatasetManifest, YcCompany } from "@/lib/types/company";
 import { YC_EMBEDDING_DIMENSIONS, YC_EMBEDDING_MODEL, validateYcEmbedding } from "@/lib/yc/embedding";
+import { gatewayProviderOptions, normalizeEmbeddingUsage, recordAiUsage, type MeteringContext } from "@/lib/billing/usage";
 
 export { YC_EMBEDDING_DIMENSIONS, YC_EMBEDDING_MODEL } from "@/lib/yc/embedding";
 
@@ -48,6 +50,7 @@ export type YcQueryEmbedder = (value: string, model: string) => Promise<number[]
 export type YcCompanyQueryOptions = {
   executor?: YcSqlExecutor;
   embed?: YcQueryEmbedder;
+  metering?: MeteringContext;
 };
 
 const EMBEDDING_CACHE_LIMIT = 200;
@@ -224,8 +227,18 @@ function validateSearchManifest(manifest: YcDatasetManifest) {
   }
 }
 
-async function embedQuery(value: string, model: string) {
-  return (await embed({ model, value })).embedding;
+async function embedQuery(value: string, model: string, suppliedContext?: MeteringContext) {
+  const operationId = `public-semantic:${createHash("sha256").update(value).digest("hex").slice(0, 24)}`;
+  const context = suppliedContext ?? { userId: null, reservationId: null, feature: "Public semantic search", operationId };
+  const result = await embed({ model, value, providerOptions: gatewayProviderOptions(context) });
+  await recordAiUsage({
+    context,
+    model,
+    providerMetadata: result.providerMetadata,
+    usage: normalizeEmbeddingUsage(result.usage),
+    eventId: operationId,
+  });
+  return result.embedding;
 }
 
 function embeddingCache(embedder: YcQueryEmbedder) {
@@ -242,7 +255,7 @@ function normalizeSearchQuery(value: string) {
   return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-async function cachedEmbedding(value: string, embedder: YcQueryEmbedder) {
+async function cachedEmbedding(value: string, embedder: YcQueryEmbedder, metering?: MeteringContext) {
   const key = `${YC_EMBEDDING_MODEL}\n${value}`;
   const cache = embeddingCache(embedder);
   const existing = cache.get(key);
@@ -252,7 +265,9 @@ async function cachedEmbedding(value: string, embedder: YcQueryEmbedder) {
     return existing;
   }
 
-  const pending = embedder(value, YC_EMBEDDING_MODEL).then((embedding) => {
+  const pending = (embedder === embedQuery
+    ? embedQuery(value, YC_EMBEDDING_MODEL, metering)
+    : embedder(value, YC_EMBEDDING_MODEL)).then((embedding) => {
     validateYcEmbedding(embedding);
     return embedding;
   });
@@ -281,7 +296,7 @@ export async function searchYcCompanies(rawInput: CompanySearchInput, options?: 
 
   const manifest = await loadYcDatasetManifest(options);
   validateSearchManifest(manifest);
-  const embedding = await cachedEmbedding(query, options?.embed ?? embedQuery);
+  const embedding = await cachedEmbedding(query, options?.embed ?? embedQuery, options?.metering);
 
   const where = companyWhere(filters);
   const vector = JSON.stringify(embedding);

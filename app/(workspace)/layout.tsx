@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { LayoutDashboard, Radar } from "lucide-react";
+import { Coins, LayoutDashboard, Radar } from "lucide-react";
 import { AppSidebar } from "@/components/app-shell";
+import { getBillingSummary } from "@/lib/billing/repository";
 import { getDashboardShellData } from "@/lib/dashboard-shell";
 
 async function DashboardSidebar() {
   const { user, chats } = await getDashboardShellData();
-  return <AppSidebar user={user} chats={chats} />;
+  const billing = await getBillingSummary(user.id);
+  return <AppSidebar user={user} chats={chats} availablePoints={billing.availablePoints} />;
 }
 
 function DashboardSidebarLoading() {
@@ -16,6 +18,7 @@ function DashboardSidebarLoading() {
       <nav className="app-nav">
         <Link href="/dashboard"><LayoutDashboard size={15} /> Overview</Link>
         <Link href="/dashboard#reports"><Radar size={15} /> Reports</Link>
+        <Link href="/credits"><Coins size={15} /> Credits</Link>
       </nav>
       <div className="sidebar-section">
         <div className="sidebar-heading"><span>Conversations</span></div>

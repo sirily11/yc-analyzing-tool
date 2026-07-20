@@ -295,6 +295,7 @@ export async function seedYcData(options: {
         model: config.embeddingModel,
         values: companies.map((company) => company.embeddingText),
         maxParallelCalls: config.embeddingParallelism,
+        providerOptions: { gateway: { tags: ["application-signal", "offline-yc-embedding"] } },
       });
       await insertYcCompanyBatch(client, companies, result.embeddings, config.embeddingModel, now.getTime());
       console.log(`${Math.min(offset + companies.length, pending.length).toLocaleString()}/${pending.length.toLocaleString()} new companies embedded and inserted.`);

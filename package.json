@@ -25,6 +25,7 @@
     "model:upload": "bun run scripts/release-model.ts"
   },
   "dependencies": {
+    "@ai-sdk/gateway": "3.0.153",
     "@ai-sdk/react": "3.0.232",
     "@aws-sdk/client-s3": "^3.1090.0",
     "@aws-sdk/s3-request-presigner": "^3.1090.0",
@@ -45,6 +46,7 @@
     "react-dom": "19.2.7",
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
+    "stripe": "^22.3.2",
     "umap-js": "^1.4.0",
     "workflow": "^4.6.0",
     "zod": "4.4.3"

@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/repository";
 import { companyResearchMapInputSchema } from "@/lib/types/company-research";
 import { getYcCompaniesByIds } from "@/lib/yc/companies";
+import { closeReservation } from "@/lib/billing/repository";
 
 export type CompanyResearchWorkflowInput = {
   userId: string;
@@ -14,6 +15,7 @@ export type CompanyResearchWorkflowInput = {
   companyIds: number[];
   request: string;
   requestId?: string;
+  reservationId?: string;
 };
 
 export async function researchCompanyReportStep(input: CompanyResearchWorkflowInput) {
@@ -26,6 +28,9 @@ export async function researchCompanyReportStep(input: CompanyResearchWorkflowIn
     requestId: input.requestId,
     chatId: input.chatId,
     timeoutMs: 5 * 60_000,
+    userId: input.userId,
+    reservationId: input.reservationId,
+    operationId: input.reportId,
   });
   const officialCompanyIds = new Set(draft.sources
     .filter((source) => source.kind === "official-site" && source.status === "ok")
@@ -68,6 +73,11 @@ export async function failCompanyReportWorkflowStep(input: Pick<CompanyResearchW
   await failCompanyResearchReport(input.reportId, input.userId, failureCode.slice(0, 120));
 }
 
+export async function releaseCompanyReportReservationStep(input: Pick<CompanyResearchWorkflowInput, "userId" | "reportId" | "reservationId">) {
+  "use step";
+  if (input.reservationId) await closeReservation({ reservationId: input.reservationId, userId: input.userId, success: false, scopeId: input.reportId });
+}
+
 export async function companyResearchWorkflow(input: CompanyResearchWorkflowInput) {
   "use workflow";
 
@@ -78,6 +88,7 @@ export async function companyResearchWorkflow(input: CompanyResearchWorkflowInpu
   } catch (cause) {
     const failureCode = cause instanceof Error ? cause.message : "COMPANY_RESEARCH_FAILED";
     await failCompanyReportWorkflowStep(input, failureCode);
+    await releaseCompanyReportReservationStep(input);
     throw cause;
   }
 }

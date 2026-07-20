@@ -6,6 +6,7 @@ import { DEFAULT_CHAT_TITLE } from "@/lib/chat-title";
 import type { ApplicationProfile, PredictionResult, ReportDocument, SourceFileMetadata } from "@/lib/types/analysis";
 import type { CompanyClusterMap, CompanyResearchDraft, CompanyResearchMapInput, CompanyResearchReportDocument } from "@/lib/types/company-research";
 import { stripEphemeralParts } from "@/lib/privacy";
+import { closeReservation, findOpenReservationByScope } from "@/lib/billing/repository";
 import { db } from "./index";
 import { analysisRuns, chatDocuments, chats, companyResearchReports, messages, reportResearchJobs, reports, type ReportResearchTarget } from "./schema";
 
@@ -53,9 +54,11 @@ export async function loadMessages(userId: string, chatId: string): Promise<UIMe
 
 export async function replaceMessages(userId: string, chatId: string, values: UIMessage[]) {
   const now = new Date();
+  // Never let an empty set turn this into a history wipe.
+  if (!values.length) return;
   await db.transaction(async (tx) => {
     await tx.delete(messages).where(and(eq(messages.chatId, chatId), eq(messages.userId, userId)));
-    if (values.length) await tx.insert(messages).values(values.map((message, sequence) => ({ id: message.id, chatId, userId, role: message.role as "system" | "user" | "assistant", parts: stripEphemeralParts(message.parts) as unknown[], metadata: (message.metadata ?? null) as Record<string, unknown> | null, sequence, createdAt: now })));
+    await tx.insert(messages).values(values.map((message, sequence) => ({ id: message.id, chatId, userId, role: message.role as "system" | "user" | "assistant", parts: stripEphemeralParts(message.parts) as unknown[], metadata: (message.metadata ?? null) as Record<string, unknown> | null, sequence, createdAt: now })));
     await tx.update(chats).set({ updatedAt: now }).where(and(eq(chats.id, chatId), eq(chats.userId, userId)));
   });
 }
@@ -192,6 +195,8 @@ export async function reclaimStaleReportDrafting(id: string, staleBefore: Date) 
 
 export async function failReport(id: string, userId: string, failureCode: string) {
   await db.update(reports).set({ status: "failed", failureCode, updatedAt: new Date() }).where(and(eq(reports.id, id), eq(reports.userId, userId)));
+  const reservation = await findOpenReservationByScope(userId, id);
+  if (reservation) await closeReservation({ reservationId: reservation.id, userId, success: false, scopeId: id });
 }
 
 export async function listReports(userId: string) {
@@ -202,7 +207,12 @@ export async function deleteReport(userId: string, id: string): Promise<{ id: st
   const deleted = await db.delete(reports)
     .where(and(eq(reports.id, id), eq(reports.userId, userId)))
     .returning({ id: reports.id });
-  return deleted[0] ?? null;
+  const result = deleted[0] ?? null;
+  if (result) {
+    const reservation = await findOpenReservationByScope(userId, id);
+    if (reservation) await closeReservation({ reservationId: reservation.id, userId, success: false, scopeId: id });
+  }
+  return result;
 }
 
 export async function getReport(userId: string, id: string): Promise<typeof reports.$inferSelect | null> {
@@ -256,6 +266,8 @@ export async function completeCompanyResearchReport(input: { id: string; userId:
 export async function failCompanyResearchReport(id: string, userId: string, failureCode: string) {
   await db.update(companyResearchReports).set({ status: "failed", failureCode, mapInput: null, updatedAt: new Date() })
     .where(and(eq(companyResearchReports.id, id), eq(companyResearchReports.userId, userId), inArray(companyResearchReports.status, ["researching", "mapping"])));
+  const reservation = await findOpenReservationByScope(userId, id);
+  if (reservation) await closeReservation({ reservationId: reservation.id, userId, success: false, scopeId: id });
 }
 
 export async function getCompanyResearchReport(userId: string, id: string) {
@@ -277,5 +289,10 @@ export async function deleteCompanyResearchReport(userId: string, id: string): P
   const deleted = await db.delete(companyResearchReports)
     .where(and(eq(companyResearchReports.id, id), eq(companyResearchReports.userId, userId)))
     .returning({ id: companyResearchReports.id });
-  return deleted[0] ?? null;
+  const result = deleted[0] ?? null;
+  if (result) {
+    const reservation = await findOpenReservationByScope(userId, id);
+    if (reservation) await closeReservation({ reservationId: reservation.id, userId, success: false, scopeId: id });
+  }
+  return result;
 }
