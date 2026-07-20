@@ -1,11 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { LoaderCircle, Sparkles, X } from "lucide-react";
+import { failCompanyClusterMap, runCompanyClusterMap, type CompanyClusterProgress } from "@/lib/ml/company-cluster";
 import type { YcCompany, YcCompanyDetail } from "@/lib/types/company";
 
-export function CompanyDetail({ company, onClose }: { company: YcCompany; onClose: () => void }) {
+type ReportGenerationStage = "idle" | "confirm" | "researching" | "mapping" | "publishing";
+
+async function responseError(response: Response, fallback: string) {
+  const result = await response.json().catch(() => null) as { error?: string } | null;
+  return result?.error ?? fallback;
+}
+
+export function CompanyDetail({ company, onClose, reportSourceId }: { company: YcCompany; onClose: () => void; reportSourceId?: string }) {
+  const router = useRouter();
   const [detail, setDetail] = useState<YcCompanyDetail | null>(null);
   const [error, setError] = useState(false);
+  const [reportStage, setReportStage] = useState<ReportGenerationStage>("idle");
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [clusterProgress, setClusterProgress] = useState<CompanyClusterProgress | null>(null);
+  const generationAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -24,11 +39,70 @@ export function CompanyDetail({ company, onClose }: { company: YcCompany; onClos
     return () => controller.abort();
   }, [company.slug]);
 
+  useEffect(() => {
+    generationAbortRef.current?.abort();
+    setReportStage("idle");
+    setReportError(null);
+    setClusterProgress(null);
+    return () => generationAbortRef.current?.abort();
+  }, [company.id]);
+
+  async function generateReport() {
+    if (!reportSourceId || reportStage !== "confirm") return;
+    const controller = new AbortController();
+    generationAbortRef.current = controller;
+    setReportError(null);
+    setClusterProgress(null);
+    setReportStage("researching");
+    let reportId: string | undefined;
+    try {
+      const researchResponse = await fetch("/api/company-reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceReportId: reportSourceId, companyId: company.id }),
+        signal: controller.signal,
+      });
+      const research = await researchResponse.json().catch(() => null) as { reportId?: string; error?: string } | null;
+      if (!researchResponse.ok || !research?.reportId) {
+        throw new Error(research?.error ?? "Company research could not start.");
+      }
+      reportId = research.reportId;
+      setReportStage("mapping");
+      const map = await runCompanyClusterMap(reportId, setClusterProgress, controller.signal);
+      setReportStage("publishing");
+      const publishResponse = await fetch(`/api/company-reports/${encodeURIComponent(reportId)}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ map }),
+        signal: controller.signal,
+      });
+      if (!publishResponse.ok) throw new Error(await responseError(publishResponse, "The company report could not be published."));
+      const published = await publishResponse.json() as { href?: string };
+      if (!published.href) throw new Error("The company report link is unavailable.");
+      generationAbortRef.current = null;
+      router.push(published.href);
+    } catch (cause) {
+      if (reportId) await failCompanyClusterMap(reportId).catch(() => undefined);
+      if (controller.signal.aborted) return;
+      setReportError(cause instanceof Error ? cause.message : "Company report generation failed.");
+      setReportStage("confirm");
+    } finally {
+      if (generationAbortRef.current === controller) generationAbortRef.current = null;
+    }
+  }
+
+  const generating = reportStage === "researching" || reportStage === "mapping" || reportStage === "publishing";
+  const generationStatus = reportStage === "researching"
+    ? "Researching the public YC profile and website sources…"
+    : reportStage === "mapping"
+      ? clusterProgress?.label ?? "Building the semantic company map in your browser…"
+      : "Publishing the private company report…";
+
   const website = company.website && /^https?:\/\//i.test(company.website) ? company.website : null;
   const ycUrl = `https://www.ycombinator.com/companies/${encodeURIComponent(company.slug)}`;
 
   return <div className="company-detail" aria-live="polite">
-    <div className="panel-heading"><span className="section-index">03 / Company</span><button className="text-action" type="button" onClick={onClose}>Close</button></div>
+    <div className="panel-heading"><span className="section-index">03 / Company</span><button className="text-action" type="button" onClick={onClose} disabled={generating}>Close</button></div>
     <div className="company-detail-heading">
       <span className="company-detail-logo">{company.logo ? <img src={company.logo} alt="" /> : company.name.slice(0, 1)}</span>
       <div><p className="eyebrow">{company.batch}</p><h2>{company.name}</h2></div>
@@ -66,8 +140,20 @@ export function CompanyDetail({ company, onClose }: { company: YcCompany; onClos
     </section>
     {detail?.tags.length ? <div className="company-tags">{detail.tags.slice(0, 5).map((tag) => <span key={tag}>{tag}</span>)}</div> : null}
     <div className="company-detail-actions">
+      {reportSourceId && <button className="button-dark company-report-trigger" type="button" onClick={() => { setReportError(null); setReportStage("confirm"); }}><Sparkles size={13} /> Generate company report</button>}
       {website && <a className="button-dark" href={website} target="_blank" rel="noreferrer">Visit website ↗</a>}
       <a className="button-ghost" href={ycUrl} target="_blank" rel="noreferrer">YC profile ↗</a>
     </div>
+    {reportStage !== "idle" && <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !generating) setReportStage("idle"); }}>
+      <section className="chat-dialog company-report-dialog" role="dialog" aria-modal="true" aria-labelledby="company-report-dialog-title" onKeyDown={(event) => { if (event.key === "Escape" && !generating) setReportStage("idle"); }}>
+        <button className="dialog-close" type="button" aria-label="Close company report dialog" onClick={() => setReportStage("idle")} disabled={generating}><X size={15} /></button>
+        <span className="section-index">Public company research</span>
+        <h2 id="company-report-dialog-title">Generate a report on {company.name}?</h2>
+        <p>This uses Firecrawl to research public web sources, runs the semantic map in your browser, and saves a private company report linked to this analysis.</p>
+        {generating && <div className="company-report-generation-status" role="status"><LoaderCircle className="spin" size={17} /><div><strong>{generationStatus}</strong>{reportStage === "mapping" && clusterProgress && <small>{Math.round(clusterProgress.progress * 100)}% complete</small>}</div></div>}
+        {reportError && <p className="dialog-error" role="alert">{reportError}</p>}
+        {!generating && <div className="dialog-actions"><button className="button-ghost" type="button" onClick={() => setReportStage("idle")}>Cancel</button><button className="button-dark" type="button" onClick={() => void generateReport()}>Generate report</button></div>}
+      </section>
+    </div>}
   </div>;
 }

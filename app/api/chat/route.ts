@@ -32,6 +32,14 @@ export async function POST(request: Request) {
   });
   const tools = createAnalysisTools({ userId: user.id, chatId: chat.id, chatText, approvedActions, requestId, requestSignal: request.signal });
   const messages = await validateUIMessages({ messages: body.messages, dataSchemas: chatDataSchemas, tools: tools as unknown as Parameters<typeof validateUIMessages>[0]["tools"] });
+  const titleTask = chat.title === DEFAULT_CHAT_TITLE
+    ? generateChatTitle(messages)
+      .then((title) => title ? renameChatIfTitleMatches(user.id, chat.id, DEFAULT_CHAT_TITLE, title) : null)
+      .catch((cause) => {
+        console.error("Failed to generate the initial chat title", cause);
+        return null;
+      })
+    : Promise.resolve(null);
   const modelMessages = await convertToModelMessages(messages, { tools, convertDataPart: pdfAttachmentToModelPart });
   const requiresPdfApproval = latestMessageRequestsPdfAnalysis(messages);
   const result = streamText({
@@ -84,31 +92,19 @@ When the user asks to analyze, compare, research, report on, or build a semantic
     },
   });
   const stream = createUIMessageStream({
-    execute: ({ writer }) => {
+    execute: async ({ writer }) => {
       writer.merge(result.toUIMessageStream({
         originalMessages: messages,
-        onFinish: async ({ messages: finished, isAborted, finishReason }) => {
-          const persisted = await persistChatCompletion(
+        onFinish: async ({ messages: finished }) => {
+          await persistChatCompletion(
             () => replaceMessages(user.id, chat.id, finished),
             { onFailure: (cause) => console.error("Failed to persist completed chat stream", cause) },
           );
-          if (!persisted) return;
-          const hasCompletedExchange = finished.some((message) => message.role === "user")
-            && finished.some((message) => message.role === "assistant" && message.parts.length > 0);
-          if (!isAborted && finishReason !== "error" && chat.title === DEFAULT_CHAT_TITLE && hasCompletedExchange) {
-            try {
-              const title = await generateChatTitle(finished);
-              const renamed = title
-                ? await renameChatIfTitleMatches(user.id, chat.id, DEFAULT_CHAT_TITLE, title)
-                : null;
-              if (renamed) writer.write({ type: "data-chatTitle", data: { title: renamed.title }, transient: true });
-            } catch (cause) {
-              console.error("Failed to generate the initial chat title", cause);
-            }
-          }
         },
         onError: chatToolErrorMessage,
       }));
+      const renamed = await titleTask;
+      if (renamed) writer.write({ type: "data-chatTitle", data: { title: renamed.title }, transient: true });
     },
   });
   return createUIMessageStreamResponse({ stream });

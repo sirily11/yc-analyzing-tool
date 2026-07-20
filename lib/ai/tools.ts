@@ -5,10 +5,10 @@ import { z } from "zod";
 import { appConfig } from "@/config";
 import { questionInputSchema, questionOutputSchema } from "@/lib/ai/question";
 import { categorizeApplication } from "@/lib/analysis/server";
-import { buildCompanyResearchDraft } from "@/lib/analysis/company-research";
+import { CompanyResearchRunError, publishCompanyResearchRun, startCompanyResearchRun } from "@/lib/analysis/company-research-run";
 import { generatedApplicationProfileSchema, predictionResultSchema, sourceFileMetadataSchema, type ExtractedPdf } from "@/lib/types/analysis";
-import { companyClusterMapSchema, companyResearchDraftSchema, companyResearchMapInputSchema, companyResearchReportDocumentSchema } from "@/lib/types/company-research";
-import { completeCompanyResearchReport, createCompanyResearchReport, createReport, failCompanyResearchReport, failReport, getCompanyResearchReport, getReadyChatDocument, getReport, storeCompanyResearchDraft } from "@/lib/db/repository";
+import { companyClusterMapSchema } from "@/lib/types/company-research";
+import { createReport, failReport, getReadyChatDocument, getReport } from "@/lib/db/repository";
 import { FirecrawlScrapeError } from "@/lib/firecrawl/client";
 import { readRetainedDocument } from "@/lib/storage/chat-documents";
 import { companySearchInputSchema, filterYcCompanies, getYcCompaniesByIds, loadYcCompanies } from "@/lib/yc/companies";
@@ -168,23 +168,15 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
         });
         if (!hasApproval) throw new Error("COMPANY_RESEARCH_CONFIRMATION_REQUIRED");
         approvedActions.delete("company-research");
-        let stage = "company_lookup";
-        let reportId: string | undefined;
         try {
-          const uniqueIds = [...new Set(companyIds)];
-          const companies = await getYcCompaniesByIds(uniqueIds);
-          stage = "report_create";
-          reportId = await createCompanyResearchReport({ userId: context.userId, chatId: context.chatId, request, companyIds: uniqueIds });
-          stage = "public_research";
-          const draft = await buildCompanyResearchDraft({ companies, request, requestId: context.requestId, chatId: context.chatId, signal: context.requestSignal });
-          const officialCompanyIds = new Set(draft.sources.filter((source) => source.kind === "official-site" && source.status === "ok").map((source) => source.companyId));
-          stage = "map_prepare";
-          const mapInput = companyResearchMapInputSchema.parse({
-            reportId,
-            targets: draft.companies.map((company) => ({ companyId: company.companyId, semanticText: company.semanticText, textSource: officialCompanyIds.has(company.companyId) ? "firecrawl" : "dataset" })),
+          const { reportId, draft } = await startCompanyResearchRun({
+            userId: context.userId,
+            chatId: context.chatId,
+            companyIds,
+            request,
+            requestId: context.requestId,
+            signal: context.requestSignal,
           });
-          stage = "draft_store";
-          if (!await storeCompanyResearchDraft({ id: reportId, userId: context.userId, draft, mapInput })) throw new Error("COMPANY_RESEARCH_NOT_STORABLE");
           chatToolLog("info", "company_research.completed", {
             requestId: context.requestId,
             chatId: context.chatId,
@@ -194,7 +186,10 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
             warningCount: draft.warnings.length,
           });
           return { ok: true as const, reportId, title: draft.title, executiveSummary: draft.executiveSummary, companies: draft.companies, comparison: draft.comparison, sources: draft.sources, warnings: draft.warnings };
-        } catch (cause) {
+        } catch (runError) {
+          const cause = runError instanceof CompanyResearchRunError ? runError.originalCause : runError;
+          const stage = runError instanceof CompanyResearchRunError ? runError.stage : "company_lookup";
+          const reportId = runError instanceof CompanyResearchRunError ? runError.reportId : undefined;
           chatToolLog("error", "company_research.failed", {
             requestId: context.requestId,
             chatId: context.chatId,
@@ -202,7 +197,6 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
             stage,
             ...summarizeToolError(cause),
           });
-          if (reportId) await failCompanyResearchReport(reportId, context.userId, cause instanceof Error ? cause.message.slice(0, 120) : "COMPANY_RESEARCH_FAILED");
           if (context.requestSignal?.aborted || summarizeToolError(cause).errorCode === "ABORTED") throw cause;
           return companyResearchFailureResult(cause, stage, reportId);
         }
@@ -217,15 +211,7 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
       description: "Validate and persist a company research report after runCompanyClusterMap. Use the exact reportId and map output from the prior tools.",
       inputSchema: z.object({ reportId: z.string().uuid(), map: companyClusterMapSchema }),
       execute: async ({ reportId, map }) => {
-        const existing = await getCompanyResearchReport(context.userId, reportId);
-        if (!existing || existing.chatId !== context.chatId || existing.status !== "mapping" || !existing.document) throw new Error("COMPANY_REPORT_NOT_PUBLISHABLE");
-        if (map.modelVersion !== appConfig.modelVersion || map.datasetVersion !== appConfig.datasetVersion) throw new Error("MODEL_VERSION_MISMATCH");
-        const targetIds = new Set(existing.companyIds);
-        const mappedTargets = new Set(map.points.filter((point) => point.target).map((point) => point.companyId));
-        if (targetIds.size !== mappedTargets.size || [...targetIds].some((id) => !mappedTargets.has(id))) throw new Error("COMPANY_MAP_TARGET_MISMATCH");
-        const draft = companyResearchDraftSchema.parse(existing.document);
-        const document = companyResearchReportDocumentSchema.parse({ ...draft, map });
-        if (!await completeCompanyResearchReport({ id: reportId, userId: context.userId, map, document })) throw new Error("COMPANY_REPORT_NOT_PUBLISHABLE");
+        const { document } = await publishCompanyResearchRun({ userId: context.userId, chatId: context.chatId, reportId, map });
         return { reportId, href: `/company-reports/${reportId}`, title: document.title, companyCount: document.companies.length, executiveSummary: document.executiveSummary };
       },
     }),

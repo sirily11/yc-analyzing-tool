@@ -11,7 +11,7 @@ bun run db:migrate
 bun run dev
 ```
 
-For a local authenticated preview, set `DEV_BYPASS_AUTH=true`. This flag is ignored in production. Production uses `@rxtech-lab/authjs-rxlab` with the RxLab OIDC values in `.env.example`, Turso with `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`, and Vercel AI Gateway with `AI_GATEWAY_API_KEY`.
+For a local authenticated preview, set `DEV_BYPASS_AUTH=true`. This flag is ignored in production. Production uses `@rxtech-lab/authjs-rxlab` with the RxLab OIDC values in `.env.example`, Turso with `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`, and Vercel AI Gateway with `AI_GATEWAY_API_KEY`. `AI_TITLE_MODEL` selects the lightweight model used to generate each new chat's title asynchronously from its first user message.
 
 ## Data and privacy
 

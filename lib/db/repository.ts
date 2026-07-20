@@ -198,7 +198,14 @@ export async function listReports(userId: string) {
   return db.select().from(reports).where(eq(reports.userId, userId)).orderBy(desc(reports.createdAt));
 }
 
-export async function getReport(userId: string, id: string) {
+export async function deleteReport(userId: string, id: string): Promise<{ id: string } | null> {
+  const deleted = await db.delete(reports)
+    .where(and(eq(reports.id, id), eq(reports.userId, userId)))
+    .returning({ id: reports.id });
+  return deleted[0] ?? null;
+}
+
+export async function getReport(userId: string, id: string): Promise<typeof reports.$inferSelect | null> {
   return (await db.select().from(reports).where(and(eq(reports.id, id), eq(reports.userId, userId))).limit(1))[0] ?? null;
 }
 
@@ -264,4 +271,11 @@ export async function getCompanyResearchMapInput(userId: string, chatId: string,
 
 export async function listCompanyResearchReports(userId: string) {
   return db.select().from(companyResearchReports).where(eq(companyResearchReports.userId, userId)).orderBy(desc(companyResearchReports.createdAt));
+}
+
+export async function deleteCompanyResearchReport(userId: string, id: string): Promise<{ id: string } | null> {
+  const deleted = await db.delete(companyResearchReports)
+    .where(and(eq(companyResearchReports.id, id), eq(companyResearchReports.userId, userId)))
+    .returning({ id: companyResearchReports.id });
+  return deleted[0] ?? null;
 }

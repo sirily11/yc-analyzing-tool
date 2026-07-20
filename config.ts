@@ -5,6 +5,10 @@ export function resolveReportModel(environment: Readonly<Record<string, string |
     ?? "openai/gpt-5-mini";
 }
 
+export function resolveTitleModel(environment: Readonly<Record<string, string | undefined>> = process.env) {
+  return environment.AI_TITLE_MODEL ?? "openai/gpt-5-nano";
+}
+
 export function modelTemperature(model: string, temperature: number) {
   return /(?:^|\/)gpt-5(?:[.-]|$)/i.test(model) ? undefined : temperature;
 }
@@ -13,6 +17,7 @@ export const appConfig = {
   name: "Application Signal",
   description: "An independent, data-informed YC application fit explorer.",
   chatModel: process.env.AI_CHAT_MODEL ?? "openai/gpt-5-mini",
+  titleModel: resolveTitleModel(),
   analysisModel:
     process.env.AI_ANALYSIS_MODEL ??
     process.env.AI_CHAT_MODEL ??
