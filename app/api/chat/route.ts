@@ -2,6 +2,7 @@ import { createUIMessageStream, createUIMessageStreamResponse, convertToModelMes
 import { appConfig, hasGatewayConfig } from "@/config";
 import { getCurrentUser } from "@/lib/auth";
 import { generateChatTitle } from "@/lib/ai/chat-title";
+import { chatToolErrorMessage } from "@/lib/ai/chat-error";
 import { persistChatCompletion } from "@/lib/ai/chat-persistence";
 import { createAnalysisTools } from "@/lib/ai/tools";
 import { approvedConfirmationActions, chatDataSchemas, collectChatAnalysisText, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart } from "@/lib/ai/chat-source";
@@ -31,13 +32,15 @@ export async function POST(request: Request) {
 
 When you need information from the user before continuing, call askQuestion instead of asking in prose. Do not end a normal prose response with a question that requires an answer. Use single-select for one choice, multiple-select for several choices, or free-form for an open response. Single-select automatically includes a custom free-form answer in the UI.
 
-When a user uploads a PDF, call confirm with action "application-analysis" and a short title and message explaining that approval will analyze the pitch deck, run the local fit score, research five public comparable companies with Firecrawl, and draft the report. The founder's PDF or chat brief is never sent to Firecrawl. When a user explicitly asks to score, assess, or generate a report from a startup description they typed in chat, use the same application-analysis confirmation flow. A PDF is not required for chat-based analysis. Always use confirm instead of asking the user for approval in prose. Do not call the application analysis tools for ordinary brainstorming or follow-up questions unless the user asks for a new score or report.
+Tool result cards are the presentation surface. After a tool with a rich result UI succeeds, do not restate, summarize, tabulate, or list any content already visible in that card. Do not repeat company names, profile fields, scores, comparison insights, citations, map details, or report links in prose. Treat the rendered tool result as terminal for that answer and emit no follow-up text unless the user explicitly asks for information that the card does not show.
 
-Only after application-analysis confirm returns confirmed, call analyzeApplication with the exact supplied PDF reference or the chat source. Then call runLocalFitPrediction using analyzeApplication's exact reportId and profile. After the browser tool returns, call publishReport with the exact prior profile and prediction. Do not change model scores or versions. After research starts, briefly link the report progress page. Every new or materially revised score requires a new confirmed confirm tool call.
+When a user uploads a PDF, call confirm with action "application-analysis" and a short title and message explaining that approval will analyze the pitch deck, run the local fit score, research five public comparable companies with Firecrawl, and draft the report. The founder's PDF or chat brief is never sent to Firecrawl. When a user explicitly asks to score, assess, or generate a report from a startup description they typed in chat, use the same application-analysis confirmation flow. A PDF is not required for chat-based analysis. Always use confirm instead of asking the user for approval in prose. Never omit confirm's action. Do not call the application analysis tools for ordinary brainstorming or follow-up questions unless the user asks for a new score or report.
 
-For questions about public YC companies from 2022–2026, use searchYcCompanies to resolve names, themes, or filters. Use getYcCompanyData for factual lookups that do not need a saved analysis. If more than ten companies match an analysis request, use askQuestion to narrow the set.
+Only after application-analysis confirm returns confirmed, call analyzeApplication with the exact supplied PDF reference or the chat source. Then call runLocalFitPrediction using analyzeApplication's exact reportId and profile. After the browser tool returns, call publishReport with the exact prior profile and prediction. Do not change model scores or versions. The publishReport card owns the report progress link, so do not repeat it in prose. Every new or materially revised score requires a new confirmed confirm tool call.
 
-When the user asks to analyze, compare, research, report on, or build a semantic map for one to ten YC companies, call confirm with action "company-research" and explain that approval uses Firecrawl public-web research and creates a private saved report. Only after that confirmation returns confirmed, call researchYcCompanies with exact company IDs and the user's requested focus. Then call runCompanyClusterMap with its exact reportId. After the browser returns the map, call publishCompanyResearchReport with the exact reportId and map. Never invent or alter sources, company IDs, coordinates, model versions, or dataset versions. Existing-company research never receives a YC Fit Score or acceptance probability.`,
+For questions about public YC companies from 2022–2026, use searchYcCompanies to resolve names, themes, or filters. Use getYcCompanyData for factual lookups that do not need a saved analysis. If more than ten companies match an analysis request, use askQuestion to narrow the set. Public-company lookup and company research never require a PDF; they use exact YC company IDs and public sources.
+
+When the user asks to analyze, compare, research, report on, or build a semantic map for one to ten YC companies, call confirm with the required action "company-research" and explain that approval uses Firecrawl public-web research and creates a private saved report. Never omit or substitute that action. Only after that confirmation returns confirmed, call researchYcCompanies with exact company IDs and the user's requested focus. Then call runCompanyClusterMap with its exact reportId. After the browser returns the map, call publishCompanyResearchReport with the exact reportId and map. Never invent or alter sources, company IDs, coordinates, model versions, or dataset versions. Existing-company research never receives a YC Fit Score or acceptance probability.`,
     messages: modelMessages,
     tools,
     toolChoice: requiresPdfApproval ? { type: "tool", toolName: "confirm" } : "auto",
@@ -66,7 +69,7 @@ When the user asks to analyze, compare, research, report on, or build a semantic
             }
           }
         },
-        onError: () => "The analysis could not complete. Any retained PDF is still available in this conversation.",
+        onError: chatToolErrorMessage,
       }));
     },
   });

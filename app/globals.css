@@ -563,6 +563,15 @@ textarea.question-free-form { display: block; min-height: 96px; resize: vertical
 .company-research-result > div > span { border: 1px solid var(--line); padding: 6px 8px; font-size: 9px; }
 .company-research-result > div small { display: block; color: var(--muted); margin-top: 2px; }
 .company-research-result > small { display: block; color: var(--accent-dark); margin-top: 10px; }
+.company-research-result .company-research-highlights { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; margin-top: 14px; }
+.company-research-highlights article { padding: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.22); }
+.company-research-highlights strong, .company-research-citations > strong { display: block; color: var(--accent-dark); font-family: var(--mono); font-size: 7px; letter-spacing: .08em; text-transform: uppercase; }
+.company-research-highlights p { margin: 5px 0; font-size: 9px; line-height: 1.45; }
+.company-research-highlights small { color: var(--muted); font-family: var(--mono); font-size: 7px; }
+.company-research-citations { display: grid; gap: 0; margin-top: 14px; }
+.company-research-citations > strong { margin-bottom: 5px; }
+.company-research-citations a { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 9px; }
+.company-research-citations a small { color: var(--muted); text-transform: capitalize; }
 .company-publication > strong { display: block; font-family: var(--serif); font-size: 20px; font-weight: 500; margin-bottom: 6px; }
 .company-publication .report-link { margin: 12px -14px -14px; }
 .company-map-tool .company-cluster-explorer { border-top: 1px solid var(--line); }
@@ -694,6 +703,7 @@ textarea.question-free-form { display: block; min-height: 96px; resize: vertical
   .recommendations dl { grid-template-columns: 1fr; }
   .report-progress-hero { padding: 55px 18px; }
   .company-cluster-explorer, .company-report-profiles, .company-report-comparison { grid-template-columns: 1fr; }
+  .company-research-result .company-research-highlights { grid-template-columns: 1fr; }
   .company-cluster-detail { border-left: 0; border-top: 1px solid var(--line); }
   .company-report-count { border-left: 0; border-top: 1px solid var(--line); padding: 25px 0 0; }
   .company-report-section, .company-report-sources { padding: 38px 18px; }

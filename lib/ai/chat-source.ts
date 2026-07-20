@@ -14,7 +14,29 @@ export const chatTitleSchema = z.object({
 });
 
 export type PdfAttachment = { documentId: string; metadata: SourceFileMetadata };
-export type ConfirmationAction = "application-analysis" | "company-research";
+
+export const confirmationActionSchema = z.enum(["application-analysis", "company-research"]);
+
+export const confirmationInputSchema = z.object({
+  action: confirmationActionSchema,
+  title: z.string().min(1).max(80),
+  message: z.string().min(1).max(240),
+  confirmLabel: z.string().min(1).max(40).optional(),
+  cancelLabel: z.string().min(1).max(40).optional(),
+});
+
+export type ConfirmationAction = z.infer<typeof confirmationActionSchema>;
+
+const toolsWithCompleteResultUi = new Set([
+  "tool-searchYcCompanies",
+  "tool-getYcCompanyData",
+  "tool-researchYcCompanies",
+  "tool-runCompanyClusterMap",
+  "tool-publishCompanyResearchReport",
+  "tool-analyzeApplication",
+  "tool-runLocalFitPrediction",
+  "tool-publishReport",
+]);
 
 export const chatDataSchemas = {
   pdfAttachment: pdfAttachmentSchema,
@@ -72,6 +94,15 @@ export function latestMessageRequestsPdfAnalysis(messages: UIMessage[]) {
   return latest?.role === "user" && getPdfAttachment(latest) !== null;
 }
 
+/** Rich result cards own their presentation, so adjacent assistant prose must not repeat them. */
+export function assistantMessageHasRenderedToolResult(message: Pick<UIMessage, "role" | "parts">) {
+  return message.role === "assistant" && message.parts.some((part) => (
+    toolsWithCompleteResultUi.has(part.type)
+    && "state" in part
+    && part.state === "output-available"
+  ));
+}
+
 /** Whether the workflow started by a submitted PDF has reached a terminal tool state. */
 export function submittedPdfWorkflowIsTerminal(messages: UIMessage[], documentId: string) {
   const submittedIndex = messages.findLastIndex((message) => getPdfAttachment(message)?.documentId === documentId);
@@ -98,9 +129,10 @@ export function approvedConfirmationActions(messages: UIMessage[]) {
   for (const message of messages.slice(latestUserIndex + 1)) {
     for (const part of message.parts) {
       if (part.type === "tool-confirm" && "approval" in part && part.approval?.approved === true) {
-        const action = "input" in part && part.input && typeof part.input === "object" && "action" in part.input && part.input.action === "company-research"
-          ? "company-research"
-          : "application-analysis";
+        const parsedAction = confirmationActionSchema.safeParse("input" in part && part.input && typeof part.input === "object" && "action" in part.input ? part.input.action : undefined);
+        // Confirmations persisted before actions were introduced belong to the
+        // original application-analysis flow. New confirmations require action.
+        const action = parsedAction.success ? parsedAction.data : "application-analysis";
         approved.add(action);
       }
       if (part.type === "tool-analyzeApplication" && "state" in part && part.state !== "input-streaming") approved.delete("application-analysis");

@@ -22,9 +22,11 @@ For a local authenticated preview, set `DEV_BYPASS_AUTH=true`. This flag is igno
 
 ## Research-enriched final reports
 
-New YC Fit reports lock the browser-generated score, research the five closest public YC-company neighbors, and then draft a citation-backed coaching dossier. Configure `AI_REPORT_MODEL` independently from chat/profile extraction and provide `FIRECRAWL_API_KEY`, `FIRECRAWL_WEBHOOK_SECRET`, and the deployed `NEXT_PUBLIC_SITE_URL`.
+New YC Fit reports lock the browser-generated score, research the five closest public YC-company neighbors, and then draft a citation-backed coaching dossier. Configure `AI_REPORT_MODEL` independently from chat/profile extraction and provide `FIRECRAWL_API_KEY`. In production, `FIRECRAWL_WEBHOOK_SECRET` plus a public HTTPS `NEXT_PUBLIC_SITE_URL` enables prompt background completion. Without them, the report progress page uses authenticated Firecrawl status API polling, which is also the local-development and recovery path.
 
 Firecrawl receives only public comparable-company names and URLs. It never receives the founder's PDF or typed brief. Website crawls are HTTPS-only, capped at five pages, restricted to the official domain, and respect robots.txt. Completed reports retain structured findings and a source index rather than raw crawled page content. If Firecrawl or the drafting model is unavailable, the locked score is preserved and an expanded deterministic dossier is published with an explicit warning.
+
+Server logs use structured `[report-research]` lifecycle events for Firecrawl requests, retries, job submission, polling/webhooks, credit counts, coverage, drafting, and fallbacks. Logs intentionally exclude API keys, source URLs, crawled page contents, and candidate documents.
 
 ## YC company research and cluster maps
 

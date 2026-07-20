@@ -12,7 +12,7 @@ import { assertWithinRateLimit, completeCompanyResearchReport, createCompanyRese
 import { readRetainedDocument } from "@/lib/storage/chat-documents";
 import { companySearchInputSchema, filterYcCompanies, getYcCompaniesByIds, loadYcCompanies } from "@/lib/yc/companies";
 import { fetchYcCompanyDetail } from "@/lib/yc/company-data";
-import type { ConfirmationAction } from "@/lib/ai/chat-source";
+import { confirmationInputSchema, type ConfirmationAction } from "@/lib/ai/chat-source";
 import { startReportResearch } from "@/lib/research/report-research";
 
 const sourceFileSchema = sourceFileMetadataSchema.extend({ kind: z.literal("pdf").optional() });
@@ -31,14 +31,8 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
       outputSchema: questionOutputSchema,
     }),
     confirm: tool({
-      description: "Ask the user for approval through a dedicated confirmation UI instead of asking in prose. Use whenever an action requires explicit user confirmation.",
-      inputSchema: z.object({
-        action: z.enum(["application-analysis", "company-research"]).default("application-analysis"),
-        title: z.string().min(1).max(80),
-        message: z.string().min(1).max(240),
-        confirmLabel: z.string().min(1).max(40).optional(),
-        cancelLabel: z.string().min(1).max(40).optional(),
-      }),
+      description: "Ask the user for approval through a dedicated confirmation UI instead of asking in prose. The action is required and scopes the approval to exactly one downstream workflow.",
+      inputSchema: confirmationInputSchema,
       needsApproval: true,
       execute: async () => ({ confirmed: true }),
     }),

@@ -9,8 +9,9 @@ import { ArrowUp, Check, ChevronRight, FileText, LoaderCircle, Paperclip, Pencil
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CompanyClusterMap } from "@/components/company-cluster-map";
-import { chatTitleSchema, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
+import { assistantMessageHasRenderedToolResult, chatTitleSchema, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
 import { questionInputSchema, questionOutputSchema, type QuestionOutput } from "@/lib/ai/question";
+import { isNearChatScrollEnd } from "@/lib/chat-scroll";
 import { MAX_CHAT_TITLE_LENGTH, normalizeChatTitle } from "@/lib/chat-title";
 import { extractPdf } from "@/lib/pdf/client";
 import { deleteRetainedPdf, uploadRetainedPdf, type RetainedChatPdf } from "@/lib/pdf/storage-client";
@@ -36,6 +37,11 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
   const [modelProgress, setModelProgress] = useState<ModelProgress | null>(null);
   const [clusterProgress, setClusterProgress] = useState<CompanyClusterProgress | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messageStreamRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
+  const isAutoScrollingRef = useRef(false);
+  const lastScrollTopRef = useRef(0);
+  const hasMeasuredInitialScrollRef = useRef(false);
   const predictionAbortRef = useRef<AbortController | null>(null);
   const clusterAbortRef = useRef<AbortController | null>(null);
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/chat" }), []);
@@ -91,6 +97,22 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
   });
 
   const isGenerating = status === "submitted" || status === "streaming";
+
+  useEffect(() => {
+    const stream = messageStreamRef.current;
+    if (!stream) return;
+
+    if (!hasMeasuredInitialScrollRef.current) {
+      shouldAutoScrollRef.current = isNearChatScrollEnd(stream);
+      lastScrollTopRef.current = stream.scrollTop;
+      hasMeasuredInitialScrollRef.current = true;
+      return;
+    }
+
+    if (!shouldAutoScrollRef.current) return;
+    isAutoScrollingRef.current = true;
+    stream.scrollTo({ top: stream.scrollHeight, behavior: "smooth" });
+  }, [clusterProgress, error, isGenerating, messages, modelProgress]);
 
   useEffect(() => {
     setTitle(initialTitle);
@@ -180,6 +202,22 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
     void stop();
   }
 
+  function trackMessageScroll(event: React.UIEvent<HTMLDivElement>) {
+    const stream = event.currentTarget;
+    const scrollTop = Math.max(0, stream.scrollTop);
+    const userScrolledUp = scrollTop < lastScrollTopRef.current;
+
+    if (userScrolledUp) {
+      shouldAutoScrollRef.current = false;
+      isAutoScrollingRef.current = false;
+    } else if (!isAutoScrollingRef.current || isNearChatScrollEnd(stream)) {
+      shouldAutoScrollRef.current = isNearChatScrollEnd(stream);
+      if (shouldAutoScrollRef.current) isAutoScrollingRef.current = false;
+    }
+
+    lastScrollTopRef.current = scrollTop;
+  }
+
   function beginRename() {
     setTitleDraft(title);
     setTitleError(null);
@@ -238,7 +276,7 @@ export function ChatWorkspace({ chatId, initialTitle, initialMessages, initialDo
           </div>
           <span className="privacy-pill"><ShieldCheck size={13} /> PDF retained in storage</span>
         </header>
-        <div className="message-stream">
+        <div className="message-stream" ref={messageStreamRef} onScroll={trackMessageScroll}>
           {messages.length === 0 && <div className="chat-intro"><span className="spark-mark"><Sparkles size={22} /></span><p className="eyebrow">Start with an idea or a company</p><h2>Analyze your startup—or research public YC companies.</h2><p>Ask for company data, comparisons, or semantic cluster maps. You can also request a YC Fit Score from a typed description or retained PDF.</p></div>}
           {messages.map((message) => <ChatMessage key={message.id} message={message} availableDocuments={availableDocuments} onApproval={(id, approved) => addToolApprovalResponse({ id, approved })} onQuestionAnswer={(toolCallId, output) => addToolOutput({ tool: "askQuestion", toolCallId, output })} modelProgress={modelProgress} clusterProgress={clusterProgress} />)}
           {isGenerating && <div className="thinking"><LoaderCircle size={14} className="spin" /> Application Signal is working…</div>}
@@ -266,7 +304,9 @@ function ChatMessage({ message, availableDocuments, onApproval, onQuestionAnswer
     </div></article>;
   }
 
+  const toolUiOwnsResult = assistantMessageHasRenderedToolResult(message);
   return <article className={`message ${message.role}`}><span className="message-role">Signal</span><div className="message-content">{message.parts.map((part, index) => {
+    if (part.type === "text" && toolUiOwnsResult) return null;
     if (part.type === "text") return message.role === "assistant"
       ? <div className="message-markdown" key={index}><ReactMarkdown remarkPlugins={[remarkGfm]}>{part.text}</ReactMarkdown></div>
       : <p key={index}>{part.text}</p>;
@@ -331,10 +371,24 @@ function CompanyLookupToolCard({ part }: { part: RenderedToolPart }) {
 
 function CompanyResearchToolCard({ part }: { part: RenderedToolPart }) {
   const complete = part.state === "output-available";
-  const output = part.output as { title?: string; executiveSummary?: string; companies?: Array<{ companyId: number; name: string; batch: string; industry: string }>; sources?: Array<{ id: string; status: string }>; warnings?: string[] } | undefined;
+  const output = part.output as {
+    title?: string;
+    executiveSummary?: string;
+    companies?: Array<{ companyId: number; name: string; batch: string; industry: string }>;
+    comparison?: Record<"sharedPatterns" | "differentiators" | "opportunities" | "risks", Array<{ text: string; sourceIds: string[] }>>;
+    sources?: Array<{ id: string; title: string; url: string; kind: string; status: string }>;
+    warnings?: string[];
+  } | undefined;
+  const highlights = output?.comparison ? [
+    ["Shared pattern", output.comparison.sharedPatterns[0]],
+    ["Differentiator", output.comparison.differentiators[0]],
+    ["Opportunity", output.comparison.opportunities[0]],
+    ["Risk", output.comparison.risks[0]],
+  ].flatMap(([label, insight]) => insight && typeof insight !== "string" ? [{ label: String(label), insight }] : []) : [];
+  const usableSources = output?.sources?.filter((source) => source.status === "ok") ?? [];
   return <div className={`tool-card company-tool-card research ${complete ? "complete" : ""}`}>
-    <ToolStatus part={part} title={complete ? output?.title ?? "Company research ready" : "Research public company sources"} copy={complete ? `${output?.companies?.length ?? 0} companies · ${output?.sources?.filter((source) => source.status === "ok").length ?? 0} usable sources` : "Searching public sources and building cited company profiles."} />
-    {complete && <div className="company-research-result"><p>{output?.executiveSummary}</p><div>{output?.companies?.map((company) => <span key={company.companyId}>{company.name}<small>{company.batch}</small></span>)}</div>{Boolean(output?.warnings?.length) && <small>{output?.warnings?.length} source coverage note{output!.warnings!.length === 1 ? "" : "s"}</small>}</div>}
+    <ToolStatus part={part} title={complete ? output?.title ?? "Company research ready" : "Research public company sources"} copy={complete ? `${output?.companies?.length ?? 0} companies · ${usableSources.length} usable sources` : "Searching public sources and building cited company profiles."} />
+    {complete && <div className="company-research-result"><p>{output?.executiveSummary}</p><div>{output?.companies?.map((company) => <span key={company.companyId}>{company.name}<small>{company.batch}</small></span>)}</div>{highlights.length > 0 && <section className="company-research-highlights">{highlights.map(({ label, insight }) => <article key={label}><strong>{label}</strong><p>{insight.text}</p><small>{insight.sourceIds.join(" · ")}</small></article>)}</section>}{usableSources.length > 0 && <section className="company-research-citations"><strong>Public sources</strong>{usableSources.slice(0, 6).map((source) => <a href={source.url} target="_blank" rel="noreferrer" key={source.id}><span>{source.title}</span><small>{source.kind}</small></a>)}</section>}{Boolean(output?.warnings?.length) && <small>{output?.warnings?.length} source coverage note{output!.warnings!.length === 1 ? "" : "s"}</small>}</div>}
     {part.state === "output-error" && <div className="tool-error">{part.errorText}</div>}
   </div>;
 }

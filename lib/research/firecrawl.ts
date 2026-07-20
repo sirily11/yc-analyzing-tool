@@ -5,6 +5,7 @@ import { appConfig } from "@/config";
 import { getMetadataBase } from "@/lib/site-metadata";
 import type { ReportResearchTarget } from "@/lib/db/schema";
 import type { YcCompany } from "@/lib/types/company";
+import { researchErrorCode, researchLog } from "./log";
 
 const FIRECRAWL_BASE_URL = "https://api.firecrawl.dev/v2";
 const retryableStatuses = new Set([408, 429, 500, 502, 503, 504]);
@@ -62,24 +63,59 @@ function retryDelay(response: Response, attempt: number) {
   return Math.min(1_000 * 2 ** attempt, 10_000);
 }
 
+function requestOperation(pathOrUrl: string) {
+  const pathname = pathOrUrl.startsWith("https://") ? new URL(pathOrUrl).pathname : pathOrUrl;
+  if (pathname === "/v2/search" || pathname === "/search") return "search";
+  if (/\/batch\/scrape\/[^/]+$/.test(pathname)) return "batch.status";
+  if (pathname.endsWith("/batch/scrape") || pathname === "/batch/scrape") return "batch.start";
+  if (/\/crawl\/[^/]+$/.test(pathname)) return "crawl.status";
+  if (pathname.endsWith("/crawl") || pathname === "/crawl") return "crawl.start";
+  return "api.request";
+}
+
 async function firecrawlRequest<T>(pathOrUrl: string, init: RequestInit = {}): Promise<T> {
   const url = pathOrUrl.startsWith("https://") ? pathOrUrl : `${FIRECRAWL_BASE_URL}${pathOrUrl}`;
+  const operation = requestOperation(pathOrUrl);
+  const apiKey = firecrawlApiKey();
   let lastResponse: Response | null = null;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch(url, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${firecrawlApiKey()}`,
-        Accept: "application/json",
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...init.headers,
-      },
-      signal: init.signal ?? AbortSignal.timeout(60_000),
-    });
-    if (response.ok) return response.json() as Promise<T>;
+    const startedAt = Date.now();
+    researchLog("info", "firecrawl.api.request", { operation, method: init.method ?? "GET", attempt: attempt + 1 });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          Accept: "application/json",
+          ...(init.body ? { "Content-Type": "application/json" } : {}),
+          ...init.headers,
+        },
+        signal: init.signal ?? AbortSignal.timeout(60_000),
+      });
+    } catch (cause) {
+      const failureCode = researchErrorCode(cause);
+      if (attempt === 2) {
+        researchLog("error", "firecrawl.api.failed", { operation, attempt: attempt + 1, failureCode, durationMs: Date.now() - startedAt });
+        throw new Error(`FIRECRAWL_${failureCode}`);
+      }
+      const delayMs = Math.min(1_000 * 2 ** attempt, 10_000);
+      researchLog("warn", "firecrawl.api.retry", { operation, attempt: attempt + 1, failureCode, delayMs });
+      await wait(delayMs);
+      continue;
+    }
+    if (response.ok) {
+      researchLog("info", "firecrawl.api.succeeded", { operation, attempt: attempt + 1, status: response.status, durationMs: Date.now() - startedAt });
+      return response.json() as Promise<T>;
+    }
     lastResponse = response;
-    if (!retryableStatuses.has(response.status) || attempt === 2) break;
-    await wait(retryDelay(response, attempt));
+    if (!retryableStatuses.has(response.status) || attempt === 2) {
+      researchLog("error", "firecrawl.api.failed", { operation, attempt: attempt + 1, status: response.status, durationMs: Date.now() - startedAt });
+      break;
+    }
+    const delayMs = retryDelay(response, attempt);
+    researchLog("warn", "firecrawl.api.retry", { operation, attempt: attempt + 1, status: response.status, delayMs });
+    await wait(delayMs);
   }
   throw new Error(`FIRECRAWL_HTTP_${lastResponse?.status ?? "FAILED"}`);
 }
@@ -119,6 +155,7 @@ function isExcludedRelatedUrl(value: string) {
 }
 
 export async function searchComparableSources(company: YcCompany): Promise<ReportResearchTarget[]> {
+  researchLog("info", "firecrawl.search.started", { companyId: company.id, companyName: company.name });
   const response = await firecrawlRequest<{ success: boolean; data?: { web?: FirecrawlSearchResult[] } }>("/search", {
     method: "POST",
     body: JSON.stringify({
@@ -131,7 +168,8 @@ export async function searchComparableSources(company: YcCompany): Promise<Repor
   });
   const companyHost = normalizedHost(company.website);
   const seen = new Set<string>();
-  return (response.data?.web ?? []).flatMap((result) => {
+  const rawResults = response.data?.web ?? [];
+  const selected = rawResults.flatMap((result) => {
     const url = publicHttpsUrl(result.url);
     if (!url || isExcludedRelatedUrl(url)) return [];
     const canonical = url.replace(/\/$/, "");
@@ -145,11 +183,19 @@ export async function searchComparableSources(company: YcCompany): Promise<Repor
       sourceType: /founder|interview|ceo|cto|co-founder/i.test(text) ? "founder-source" as const : "related-coverage" as const,
     }];
   }).slice(0, appConfig.reportResearch.relatedSourceLimit);
+  researchLog("info", "firecrawl.search.completed", { companyId: company.id, candidates: rawResults.length, selected: selected.length });
+  return selected;
 }
 
 function webhook(reportId: string) {
+  if (!process.env.FIRECRAWL_WEBHOOK_SECRET?.trim()) return null;
+  const url = publicHttpsUrl(firecrawlWebhookUrl());
+  if (!url) {
+    researchLog("warn", "firecrawl.webhook.disabled", { reportId, reason: "CALLBACK_NOT_PUBLIC_HTTPS" });
+    return null;
+  }
   return {
-    url: firecrawlWebhookUrl(),
+    url,
     events: ["completed", "failed"],
     metadata: { reportId },
   };
@@ -157,7 +203,12 @@ function webhook(reportId: string) {
 
 export async function startWebsiteCrawl(reportId: string, company: YcCompany) {
   const url = publicHttpsUrl(company.website);
-  if (!url) return null;
+  if (!url) {
+    researchLog("warn", "firecrawl.crawl.skipped", { reportId, companyId: company.id, reason: "INVALID_PUBLIC_HTTPS_URL" });
+    return null;
+  }
+  researchLog("info", "firecrawl.crawl.started", { reportId, companyId: company.id, pageLimit: appConfig.reportResearch.websitePageLimit, maxDepth: 1 });
+  const webhookConfig = webhook(reportId);
   const result = await firecrawlRequest<FirecrawlJobStart>("/crawl", {
     method: "POST",
     body: JSON.stringify({
@@ -178,9 +229,10 @@ export async function startWebsiteCrawl(reportId: string, company: YcCompany) {
         removeBase64Images: true,
         blockAds: true,
       },
-      webhook: webhook(reportId),
+      ...(webhookConfig ? { webhook: webhookConfig } : {}),
     }),
   });
+  researchLog("info", "firecrawl.crawl.queued", { reportId, companyId: company.id, firecrawlJobId: result.id });
   return {
     firecrawlJobId: result.id,
     target: { companyId: company.id, url, sourceType: "company-website" as const },
@@ -189,7 +241,12 @@ export async function startWebsiteCrawl(reportId: string, company: YcCompany) {
 
 export async function startRelatedBatch(reportId: string, targets: ReportResearchTarget[]) {
   const unique = [...new Map(targets.map((target) => [target.url.replace(/\/$/, ""), target])).values()];
-  if (!unique.length) return null;
+  if (!unique.length) {
+    researchLog("warn", "firecrawl.batch.skipped", { reportId, reason: "NO_VALID_TARGETS" });
+    return null;
+  }
+  researchLog("info", "firecrawl.batch.started", { reportId, targetCount: unique.length });
+  const webhookConfig = webhook(reportId);
   const result = await firecrawlRequest<FirecrawlJobStart>("/batch/scrape", {
     method: "POST",
     body: JSON.stringify({
@@ -201,9 +258,10 @@ export async function startRelatedBatch(reportId: string, targets: ReportResearc
       maxAge: appConfig.reportResearch.cacheMaxAgeMs,
       removeBase64Images: true,
       blockAds: true,
-      webhook: webhook(reportId),
+      ...(webhookConfig ? { webhook: webhookConfig } : {}),
     }),
   });
+  researchLog("info", "firecrawl.batch.queued", { reportId, targetCount: unique.length, firecrawlJobId: result.id });
   return { firecrawlJobId: result.id, targets: unique };
 }
 
@@ -215,6 +273,7 @@ function firecrawlDocument(value: unknown): FirecrawlDocument | null {
 }
 
 export async function getFirecrawlJob(kind: "crawl" | "batch-scrape", jobId: string): Promise<FirecrawlJobSnapshot> {
+  researchLog("info", "firecrawl.job.poll.started", { kind, firecrawlJobId: jobId });
   const endpoint = kind === "crawl" ? `/crawl/${encodeURIComponent(jobId)}` : `/batch/scrape/${encodeURIComponent(jobId)}`;
   let next: string | null = endpoint;
   let first: { status?: string; completed?: number; total?: number; creditsUsed?: number } | null = null;
@@ -235,13 +294,23 @@ export async function getFirecrawlJob(kind: "crawl" | "batch-scrape", jobId: str
     }));
     next = response.next ?? null;
   }
-  return {
+  const snapshot: FirecrawlJobSnapshot = {
     status: first?.status === "completed" ? "completed" : first?.status === "failed" ? "failed" : "scraping",
     completed: Number(first?.completed ?? documents.length),
     total: Number(first?.total ?? documents.length),
     creditsUsed: Number(first?.creditsUsed ?? 0),
     documents,
   };
+  researchLog("info", "firecrawl.job.poll.completed", {
+    kind,
+    firecrawlJobId: jobId,
+    status: snapshot.status,
+    completed: snapshot.completed,
+    total: snapshot.total,
+    creditsUsed: snapshot.creditsUsed,
+    documentCount: snapshot.documents.length,
+  });
+  return snapshot;
 }
 
 export function verifyFirecrawlSignature(rawBody: string, signature: string | null, secret = process.env.FIRECRAWL_WEBHOOK_SECRET) {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UIMessage } from "ai";
-import { approvedConfirmationActions, collectChatAnalysisText, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, hasApprovedConfirmation, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
+import { approvedConfirmationActions, assistantMessageHasRenderedToolResult, collectChatAnalysisText, confirmationInputSchema, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, hasApprovedConfirmation, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
 
 const attachment = {
   documentId: "0de282a1-3730-4d19-ad55-aac1a45da748",
@@ -8,6 +8,18 @@ const attachment = {
 };
 
 describe("chat analysis source", () => {
+  it("requires every confirmation to declare its workflow action", () => {
+    expect(confirmationInputSchema.safeParse({
+      title: "Create company map",
+      message: "Research public company sources.",
+    }).success).toBe(false);
+    expect(confirmationInputSchema.safeParse({
+      action: "company-research",
+      title: "Create company map",
+      message: "Research public company sources.",
+    }).success).toBe(true);
+  });
+
   it("collects typed founder context without treating PDF upload metadata as a brief", () => {
     const messages = [
       { id: "1", role: "user", parts: [{ type: "text", text: "We build software for independent pharmacies." }] },
@@ -24,6 +36,19 @@ describe("chat analysis source", () => {
       { id: "3", role: "user", parts: [{ type: "text", text: "New version targets hospitals. Rescore it." }] },
     ] satisfies UIMessage[];
     expect(collectChatAnalysisText(messages)).toBe("New version targets hospitals. Rescore it.");
+  });
+
+  it("lets rich tool cards own the result instead of repeating it in assistant prose", () => {
+    const rendered = { id: "result", role: "assistant", parts: [
+      { type: "tool-searchYcCompanies", toolCallId: "search", state: "output-available", input: {}, output: { companies: [] } },
+      { type: "text", text: "Here is the same company list again." },
+    ] } as UIMessage;
+    const failed = { id: "failed", role: "assistant", parts: [{ type: "tool-searchYcCompanies", toolCallId: "search", state: "output-error", input: {}, errorText: "Search failed" }] } as UIMessage;
+    const unknown = { id: "unknown", role: "assistant", parts: [{ type: "tool-customTool", toolCallId: "custom", state: "output-available", input: {}, output: {} }] } as UIMessage;
+
+    expect(assistantMessageHasRenderedToolResult(rendered)).toBe(true);
+    expect(assistantMessageHasRenderedToolResult(failed)).toBe(false);
+    expect(assistantMessageHasRenderedToolResult(unknown)).toBe(false);
   });
 
   it("keeps PDF metadata structured while exposing only the refined request", () => {

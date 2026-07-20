@@ -153,6 +153,22 @@ describe("research-enriched reports", () => {
     });
   });
 
+  it("uses API polling without adding a webhook when callback configuration is absent", async () => {
+    vi.stubEnv("FIRECRAWL_API_KEY", "test-key");
+    vi.stubEnv("FIRECRAWL_WEBHOOK_SECRET", "");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "http://localhost:3000");
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, id: "crawl-job" }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await startWebsiteCrawl("report-1", company);
+    const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(String(request.body)) as Record<string, unknown>;
+    expect(body).not.toHaveProperty("webhook");
+  });
+
   it("removes invented citations and invalid PDF pages while locking company identity", () => {
     const source: ExtractedPdf = {
       metadata: { kind: "pdf", name: "acme.pdf", size: 10, pages: 2, characters: 10, sha256: "a".repeat(64) },
