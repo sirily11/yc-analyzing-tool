@@ -9,9 +9,17 @@ export const pdfAttachmentSchema = z.object({
   metadata: sourceFileMetadataSchema.extend({ kind: z.literal("pdf").optional() }),
 });
 
-export type PdfAttachment = { documentId: string; metadata: SourceFileMetadata };
+export const chatTitleSchema = z.object({
+  title: z.string().min(1),
+});
 
-export const chatDataSchemas = { pdfAttachment: pdfAttachmentSchema };
+export type PdfAttachment = { documentId: string; metadata: SourceFileMetadata };
+export type ConfirmationAction = "application-analysis" | "company-research";
+
+export const chatDataSchemas = {
+  pdfAttachment: pdfAttachmentSchema,
+  chatTitle: chatTitleSchema,
+};
 
 const legacyUploadNotice = /^I uploaded (.+?)\.\s+Document ID: ([0-9a-f-]+)\.\s+Source metadata: (\{.*\})\.\s+([\s\S]+)$/i;
 
@@ -82,18 +90,28 @@ export function submittedPdfWorkflowIsTerminal(messages: UIMessage[], documentId
 }
 
 /** Check for an approved, not-yet-consumed confirmation after the latest user turn. */
-export function hasApprovedConfirmation(messages: UIMessage[]) {
+export function approvedConfirmationActions(messages: UIMessage[]) {
   const latestUserIndex = messages.findLastIndex((message) => message.role === "user");
-  if (latestUserIndex < 0) return false;
+  const approved = new Set<ConfirmationAction>();
+  if (latestUserIndex < 0) return approved;
 
-  let approved = false;
   for (const message of messages.slice(latestUserIndex + 1)) {
     for (const part of message.parts) {
-      if (part.type === "tool-confirm" && "approval" in part) approved = part.approval?.approved === true;
-      if (part.type === "tool-analyzeApplication" && "state" in part && part.state !== "input-streaming") approved = false;
+      if (part.type === "tool-confirm" && "approval" in part && part.approval?.approved === true) {
+        const action = "input" in part && part.input && typeof part.input === "object" && "action" in part.input && part.input.action === "company-research"
+          ? "company-research"
+          : "application-analysis";
+        approved.add(action);
+      }
+      if (part.type === "tool-analyzeApplication" && "state" in part && part.state !== "input-streaming") approved.delete("application-analysis");
+      if (part.type === "tool-researchYcCompanies" && "state" in part && part.state !== "input-streaming") approved.delete("company-research");
     }
   }
   return approved;
+}
+
+export function hasApprovedConfirmation(messages: UIMessage[], action: ConfirmationAction = "application-analysis") {
+  return approvedConfirmationActions(messages).has(action);
 }
 
 export function pdfAttachmentToModelPart(part: { type: string; data?: unknown }) {
@@ -128,5 +146,32 @@ export function collectChatAnalysisText(messages: UIMessage[]) {
     .join("\n\n")
     .trim();
 
+  return text || null;
+}
+
+/** Reconstruct the typed brief that produced a particular report after publication has been persisted. */
+export function collectChatAnalysisTextForReport(messages: UIMessage[], reportId: string) {
+  const analysisIndex = messages.findIndex((message) => message.parts.some((part) => {
+    if (part.type !== "tool-analyzeApplication" || !("output" in part)) return false;
+    const output = part.output;
+    return Boolean(output && typeof output === "object" && "reportId" in output && output.reportId === reportId);
+  }));
+  if (analysisIndex < 0) return null;
+  let startIndex = 0;
+  for (let index = analysisIndex - 1; index >= 0; index -= 1) {
+    const published = messages[index]?.parts.some((part) => part.type === "tool-publishReport" && "state" in part && part.state === "output-available");
+    if (published) {
+      startIndex = index + 1;
+      break;
+    }
+  }
+  const text = messages.slice(startIndex, analysisIndex + 1)
+    .filter((message) => message.role === "user" && getPdfAttachment(message) === null)
+    .flatMap((message) => message.parts)
+    .filter((part): part is Extract<UIMessage["parts"][number], { type: "text" }> => part.type === "text")
+    .map((part) => part.text.trim())
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
   return text || null;
 }

@@ -30,6 +30,17 @@ const styles = StyleSheet.create({
   recTitle: { fontSize: 10, fontFamily: "Helvetica-Bold", marginBottom: 3 },
   muted: { color: "#70695f", lineHeight: 1.4 },
   methodology: { color: "#70695f", fontSize: 8, lineHeight: 1.5 },
+  evidenceItem: { borderTop: "1px solid #cec6b7", paddingVertical: 8 },
+  evidenceLabel: { color: "#d85b35", fontSize: 6.5, letterSpacing: .7, textTransform: "uppercase", marginBottom: 4 },
+  diagnosisItem: { marginBottom: 12 },
+  diagnosisTitle: { fontFamily: "Helvetica-Bold", fontSize: 9, marginBottom: 4 },
+  researchCompany: { borderTop: "1px solid #cec6b7", paddingTop: 10, marginBottom: 13 },
+  researchCompanyTitle: { fontFamily: "Times-Roman", fontSize: 18, marginBottom: 6 },
+  researchGrid: { display: "flex", flexDirection: "row", gap: 12 },
+  researchCell: { flex: 1 },
+  sourceItem: { borderTop: "1px solid #cec6b7", paddingVertical: 6 },
+  sourceLink: { color: "#b74627", fontSize: 6.5, textDecoration: "none", marginTop: 3 },
+  actionCard: { width: "48%", borderTop: "1px solid #cec6b7", paddingTop: 8, marginBottom: 12 },
   footer: { position: "absolute", left: 34, right: 34, bottom: 22, borderTop: "1px solid #cec6b7", paddingTop: 8, display: "flex", flexDirection: "row", justifyContent: "space-between", fontSize: 6, color: "#70695f" },
 });
 
@@ -38,10 +49,10 @@ export function pdfText(value: unknown) {
   return String(value).replace(/[\u2011\u2013\u2014]/g, "-");
 }
 
-function Footer({ report, page }: { report: ReportDocument; page: number }) {
-  return <View style={styles.footer}>
+function Footer({ report }: { report: ReportDocument }) {
+  return <View style={styles.footer} fixed>
     <Text>Application Signal - Independent and not affiliated with Y Combinator</Text>
-    <Text>Page {page} / 3 - {report.prediction.datasetVersion} - {report.prediction.modelVersion}</Text>
+    <Text render={({ pageNumber, totalPages }) => `Page ${pageNumber} / ${totalPages} - ${report.prediction.datasetVersion} - ${report.prediction.modelVersion}`} />
   </View>;
 }
 
@@ -53,6 +64,7 @@ export function ReportPdf({ report, companies }: { report: ReportDocument; compa
   const companiesById = new Map(companies.map((company) => [company.id, company]));
   const founder = report.profile.founderProfile;
   const components = report.prediction.scoreComponents;
+  const dossier = report.schemaVersion === 2 ? report.dossier : undefined;
   const profileItems = [
     ["Sector", report.profile.sector],
     ["Subindustry", report.profile.subindustry],
@@ -102,7 +114,7 @@ export function ReportPdf({ report, companies }: { report: ReportDocument; compa
           <Text>{pdfText(factor.value)}</Text>
         </View>)}
       </View>
-      <Footer report={report} page={1} />
+      <Footer report={report} />
     </Page>
 
     <Page size="A4" style={styles.page}>
@@ -132,7 +144,7 @@ export function ReportPdf({ report, companies }: { report: ReportDocument; compa
           })}
         </View>
       </View>
-      <Footer report={report} page={2} />
+      <Footer report={report} />
     </Page>
 
     <Page size="A4" style={styles.page}>
@@ -149,19 +161,62 @@ export function ReportPdf({ report, companies }: { report: ReportDocument; compa
           {report.gaps.map((item) => <Text style={styles.item} key={item}>- {pdfText(item)}</Text>)}
         </View>
       </View>
-      <View style={styles.divider} />
-      <Text style={styles.sectionLabel}>Improvement plan</Text>
-      {report.recommendations.map((item) => <View style={styles.rec} key={item.priority} wrap={false}>
-        <Text style={styles.recNo}>{String(item.priority).padStart(2, "0")}</Text>
-        <View style={styles.recBody}>
-          <Text style={styles.recTitle}>{pdfText(item.title)}</Text>
-          <Text style={styles.muted}>{pdfText(item.detail)}</Text>
-        </View>
-      </View>)}
+      {!dossier && <><View style={styles.divider} /><Text style={styles.sectionLabel}>Improvement plan</Text>{report.recommendations.map((item) => <View style={styles.rec} key={item.priority} wrap={false}>
+        <Text style={styles.recNo}>{String(item.priority).padStart(2, "0")}</Text><View style={styles.recBody}><Text style={styles.recTitle}>{pdfText(item.title)}</Text><Text style={styles.muted}>{pdfText(item.detail)}</Text></View>
+      </View>)}</>}
       <View style={styles.divider} />
       <Text style={styles.sectionLabel}>Methodology and limitations</Text>
       <Text style={styles.methodology}>{pdfText(report.methodology)}{"\n\n"}{pdfText(report.disclaimer)}</Text>
-      <Footer report={report} page={3} />
+      <Footer report={report} />
     </Page>
+
+    {dossier && <Page size="A4" style={styles.page}>
+      <Text style={styles.kicker}>Candidate evidence and diagnosis</Text>
+      <Text style={styles.title}>What is established.</Text>
+      <Text style={styles.fullSummary}>{pdfText(dossier.scoreInterpretation)}</Text>
+      <View style={styles.columns}>
+        <View style={styles.column}><Text style={styles.sectionLabel}>Evidence snapshot</Text>{dossier.candidateEvidence.map((item, index) => <View style={styles.evidenceItem} key={`${item.claim}-${index}`} wrap={false}><Text style={styles.evidenceLabel}>{item.page ? `Page ${item.page}` : item.sourceLabel}</Text><Text>{pdfText(item.claim)}</Text></View>)}</View>
+        <View style={styles.column}><Text style={styles.sectionLabel}>Application diagnosis</Text>{([
+          ["Market and customer", dossier.diagnosis.marketCustomer], ["Product", dossier.diagnosis.product], ["Traction", dossier.diagnosis.traction], ["Founders", dossier.diagnosis.founders], ["Readiness", dossier.diagnosis.readiness],
+        ] as Array<[string, string]>).map(([title, detail]) => <View style={styles.diagnosisItem} key={title} wrap={false}><Text style={styles.diagnosisTitle}>{title}</Text><Text style={styles.muted}>{pdfText(detail)}</Text></View>)}</View>
+      </View>
+      <Footer report={report} />
+    </Page>}
+
+    {dossier && <Page size="A4" style={styles.page}>
+      <Text style={styles.kicker}>Comparable-company research</Text>
+      <Text style={styles.title}>Patterns, not predictions.</Text>
+      <Text style={styles.fullSummary}>The local model selected these neighbors. Public website, founder, and related-source research explains useful execution patterns without changing the fit score.</Text>
+      {dossier.companyDeepDives.map((company, index) => <View style={styles.researchCompany} key={company.companyId}>
+        <Text style={styles.evidenceLabel}>{String(index + 1).padStart(2, "0")} / Sources {company.sourceIds.join(", ")}</Text>
+        <Text style={styles.researchCompanyTitle}>{pdfText(company.companyName)}</Text>
+        <Text style={styles.muted}>{pdfText(company.overview)}</Text>
+        <View style={[styles.researchGrid, { marginTop: 8 }]}><View style={styles.researchCell}><Text style={styles.diagnosisTitle}>Website</Text><Text style={styles.muted}>{pdfText(company.websiteAnalysis)}</Text></View><View style={styles.researchCell}><Text style={styles.diagnosisTitle}>Founders</Text><Text style={styles.muted}>{pdfText(company.founderAnalysis)}</Text></View><View style={styles.researchCell}><Text style={styles.diagnosisTitle}>Traction</Text><Text style={styles.muted}>{pdfText(company.tractionAnalysis)}</Text></View></View>
+        <Text style={[styles.muted, { marginTop: 7 }]}>Similarities: {pdfText(company.similarities.join(" "))}{"\n"}Differences: {pdfText(company.differences.join(" "))}{"\n"}Lessons: {pdfText(company.lessons.join(" "))}</Text>
+      </View>)}
+      <Footer report={report} />
+    </Page>}
+
+    {dossier && <Page size="A4" style={styles.page}>
+      <Text style={styles.kicker}>Application improvements</Text>
+      <Text style={styles.title}>Make the next draft count.</Text>
+      {dossier.recommendations.map((item) => <View style={styles.rec} key={item.priority}><Text style={styles.recNo}>{String(item.priority).padStart(2, "0")}</Text><View style={styles.recBody}><Text style={styles.recTitle}>{pdfText(item.title)}</Text><Text style={styles.muted}>{pdfText(item.action)}{"\n"}Why: {pdfText(item.rationale)}{"\n"}Proof to add: {pdfText(item.proofToAdd)}{"\n"}Suggested framing: {pdfText(item.suggestedFraming)}</Text></View></View>)}
+      <View style={styles.divider} />
+      <Text style={styles.sectionLabel}>30-day action plan</Text>
+      <View style={[styles.factorGrid, { marginTop: 8 }]}>{dossier.actionPlan.map((item) => <View style={styles.actionCard} key={item.period} wrap={false}><Text style={styles.evidenceLabel}>{item.period}</Text><Text style={styles.recTitle}>{pdfText(item.focus)}</Text>{item.actions.map((action) => <Text style={styles.muted} key={action}>- {pdfText(action)}</Text>)}</View>)}</View>
+      <Footer report={report} />
+    </Page>}
+
+    {dossier && <Page size="A4" style={styles.page}>
+      <Text style={styles.kicker}>Research appendix</Text>
+      <Text style={styles.title}>Sources and limits.</Text>
+      {dossier.researchWarnings.map((warning) => <Text style={[styles.muted, { marginBottom: 6 }]} key={warning}>- {pdfText(warning)}</Text>)}
+      <View style={styles.divider} />
+      {dossier.researchSources.map((source) => <View style={styles.sourceItem} key={source.id} wrap={false}><Text style={styles.evidenceLabel}>{source.id} - {source.sourceType.replaceAll("-", " ")}</Text><Text>{pdfText(source.title)}</Text><Link style={styles.sourceLink} src={source.url}>{source.url}</Link><Text style={styles.muted}>Accessed {new Date(source.accessedAt).toISOString().slice(0, 10)}</Text></View>)}
+      <View style={styles.divider} />
+      <Text style={styles.sectionLabel}>Methodology and limitations</Text>
+      <Text style={styles.methodology}>{pdfText(report.methodology)}{"\n\n"}{pdfText(report.disclaimer)}{"\n\n"}Draft model: {pdfText(report.generation?.draftModel)}. Public research is a time-stamped snapshot and may be incomplete.</Text>
+      <Footer report={report} />
+    </Page>}
   </Document>;
 }

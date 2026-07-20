@@ -20,6 +20,20 @@ For a local authenticated preview, set `DEV_BYPASS_AUTH=true`. This flag is igno
 - Turso stores owner-scoped object references, chat UI parts, structured profiles, model results, and reports. Restored approval requests resolve their document through the owner and conversation scope instead of browser memory.
 - Deleting a conversation deletes its retained S3 objects before removing its messages and reports. Reports and PDF downloads repeat the same ownership check.
 
+## Research-enriched final reports
+
+New YC Fit reports lock the browser-generated score, research the five closest public YC-company neighbors, and then draft a citation-backed coaching dossier. Configure `AI_REPORT_MODEL` independently from chat/profile extraction and provide `FIRECRAWL_API_KEY`, `FIRECRAWL_WEBHOOK_SECRET`, and the deployed `NEXT_PUBLIC_SITE_URL`.
+
+Firecrawl receives only public comparable-company names and URLs. It never receives the founder's PDF or typed brief. Website crawls are HTTPS-only, capped at five pages, restricted to the official domain, and respect robots.txt. Completed reports retain structured findings and a source index rather than raw crawled page content. If Firecrawl or the drafting model is unavailable, the locked score is preserved and an expanded deterministic dossier is published with an explicit warning.
+
+## YC company research and cluster maps
+
+Chat can search and filter the versioned 2022–2026 public YC directory, inspect exact company profiles, and compare up to ten companies. Local directory lookup is immediate. Current-web research, dynamic mapping, and private report persistence share one explicit `company-research` approval and the same hourly analysis limit as application reports.
+
+Configure `FIRECRAWL_API_KEY` to enable research. Each company is limited to three public search results and three same-origin official pages. The server keeps structured summaries, cited claims, source metadata, and coverage warnings; it does not persist scraped Markdown. A report fails visibly when all live research operations fail.
+
+Dynamic maps run in the browser using the active model archive. They combine normalized startup latent vectors and current website-language embeddings with a deterministic 70/30 distance blend, add at most 40 nearby reference companies, and fall back to the versioned global map with a warning if embedding or UMAP fails. Saved company reports and map inputs are owner-only and do not affect the dashboard's YC Fit average.
+
 ## Model training and S3 releases
 
 The raw ONNX model and generated release archives are not committed to Git. Training artifacts, promoted browser artifacts, and packaged releases are ignored under `ml/artifacts/`, `public/models/`, and `ml/releases/` respectively. The browser instead downloads one versioned ZIP from the URL stored as `modelArchiveUrl` in `config.ts` and expands it in memory.

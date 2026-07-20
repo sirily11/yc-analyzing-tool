@@ -1,3 +1,10 @@
+export function resolveReportModel(environment: Readonly<Record<string, string | undefined>> = process.env) {
+  return environment.AI_REPORT_MODEL
+    ?? environment.AI_ANALYSIS_MODEL
+    ?? environment.AI_CHAT_MODEL
+    ?? "openai/gpt-5-mini";
+}
+
 export const appConfig = {
   name: "Application Signal",
   description: "An independent, data-informed YC application fit explorer.",
@@ -6,7 +13,8 @@ export const appConfig = {
     process.env.AI_ANALYSIS_MODEL ??
     process.env.AI_CHAT_MODEL ??
     "openai/gpt-5-mini",
-  maxToolSteps: 6,
+  reportModel: resolveReportModel(),
+  maxToolSteps: 8,
   temperature: 0.2,
   pdf: {
     maxBytes: 20 * 1024 * 1024,
@@ -17,6 +25,15 @@ export const appConfig = {
   analysisRateLimitPerHour: Number(
     process.env.ANALYSIS_RATE_LIMIT_PER_HOUR ?? 5,
   ),
+  reportResearch: {
+    comparableCompanyLimit: 5,
+    websitePageLimit: 5,
+    relatedSourceLimit: 4,
+    cacheMaxAgeMs: 24 * 60 * 60 * 1_000,
+    deadlineMs: 10 * 60 * 1_000,
+    maxSourceCharacters: 12_000,
+    maxCompanyCharacters: 60_000,
+  },
   datasetVersion: "yc-2022-2026-ytd-v2",
   modelVersion: "browser-fit-v2",
   // Public HTTPS URL for the versioned model ZIP in S3.
@@ -24,3 +41,4 @@ export const appConfig = {
 } as const;
 
 export const hasGatewayConfig = Boolean(process.env.AI_GATEWAY_API_KEY);
+export const hasFirecrawlConfig = Boolean(process.env.FIRECRAWL_API_KEY);

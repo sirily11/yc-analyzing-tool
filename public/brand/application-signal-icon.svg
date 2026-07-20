@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-labelledby="title">
+  <title id="title">Application Signal</title>
+  <rect width="180" height="180" rx="28" fill="#d85b35"/>
+  <path d="M91 38 137 142h-24l-10-25H76l-10 25H43L89 38h2Zm-7 59h12L90 80l-6 17Z" fill="#fffaf0"/>
+  <rect x="16" y="16" width="148" height="148" rx="19" fill="none" stroke="#25211d" stroke-opacity=".18" stroke-width="3"/>
+</svg>

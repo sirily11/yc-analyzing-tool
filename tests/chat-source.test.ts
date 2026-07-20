@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { UIMessage } from "ai";
-import { collectChatAnalysisText, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, hasApprovedConfirmation, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
+import { approvedConfirmationActions, collectChatAnalysisText, createPdfUploadMessageParts, DEFAULT_PDF_REPORT_REQUEST, getPdfAttachment, getVisibleUserText, hasApprovedConfirmation, latestMessageRequestsPdfAnalysis, pdfAttachmentToModelPart, submittedPdfWorkflowIsTerminal } from "@/lib/ai/chat-source";
 
 const attachment = {
   documentId: "0de282a1-3730-4d19-ad55-aac1a45da748",
@@ -53,6 +53,21 @@ describe("chat analysis source", () => {
 
     const consumed = { id: "analysis", role: "assistant", parts: [{ type: "tool-analyzeApplication", toolCallId: "call-analysis", state: "output-available", input: {}, output: {} }] } as UIMessage;
     expect(hasApprovedConfirmation([user, confirmation, consumed])).toBe(false);
+  });
+
+  it("keeps application and company-research approvals independently scoped", () => {
+    const user = { id: "request", role: "user", parts: [{ type: "text", text: "Score my startup and research Stripe." }] } satisfies UIMessage;
+    const applicationApproval = { id: "app-confirm", role: "assistant", parts: [{ type: "tool-confirm", toolCallId: "app-confirm-call", state: "approval-responded", input: { action: "application-analysis" }, approval: { id: "app-approval", approved: true } }] } as UIMessage;
+    const researchApproval = { id: "research-confirm", role: "assistant", parts: [{ type: "tool-confirm", toolCallId: "research-confirm-call", state: "approval-responded", input: { action: "company-research" }, approval: { id: "research-approval", approved: true } }] } as UIMessage;
+
+    expect([...approvedConfirmationActions([user, applicationApproval, researchApproval])]).toEqual(["application-analysis", "company-research"]);
+
+    const applicationRun = { id: "analysis", role: "assistant", parts: [{ type: "tool-analyzeApplication", toolCallId: "analysis-call", state: "output-available", input: {}, output: {} }] } as UIMessage;
+    expect(hasApprovedConfirmation([user, applicationApproval, researchApproval, applicationRun], "application-analysis")).toBe(false);
+    expect(hasApprovedConfirmation([user, applicationApproval, researchApproval, applicationRun], "company-research")).toBe(true);
+
+    const researchRun = { id: "research", role: "assistant", parts: [{ type: "tool-researchYcCompanies", toolCallId: "research-call", state: "output-available", input: {}, output: {} }] } as UIMessage;
+    expect(hasApprovedConfirmation([user, applicationApproval, researchApproval, applicationRun, researchRun], "company-research")).toBe(false);
   });
 
   it("renders and detects legacy upload notices without showing their raw JSON", () => {

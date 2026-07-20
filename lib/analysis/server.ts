@@ -1,7 +1,7 @@
 import "server-only";
 import { generateText, Output } from "ai";
 import { appConfig, hasGatewayConfig } from "@/config";
-import { applicationProfileSchema, type ApplicationProfile, type ExtractedPdf } from "@/lib/types/analysis";
+import { generatedApplicationProfileSchema, type ApplicationProfile, type ExtractedPdf } from "@/lib/types/analysis";
 
 const sectors: Array<[RegExp, string, string]> = [
   [/health|clinical|patient|medical|biotech|drug|therapeutic/i, "Healthcare", "Health & life sciences"],
@@ -19,7 +19,7 @@ export async function categorizeApplication(document: ExtractedPdf): Promise<App
   const { output } = await generateText({
     model: appConfig.analysisModel,
     temperature: 0,
-    output: Output.object({ schema: applicationProfileSchema }),
+    output: Output.object({ schema: generatedApplicationProfileSchema }),
     system: `You extract a conservative startup application profile. Use only evidence in the supplied ${isChatBrief ? "founder chat brief" : "PDF"}. Mark missing information instead of inventing it. Evidence pages are page numbers, never quotes; use page 1 for a chat brief. Do not estimate YC acceptance probability.
 
 For founderProfile, record only job-relevant evidence: capability domains, experience relevant to this company's market, demonstrated or stated technical ability, prior building experience, and team complementarity. Never use or repeat founder names, age, gender, ethnicity, nationality, named schools, named employers, or prestige. "Demonstrated" requires a concrete accomplishment in the source; a self-description without proof is only "stated". If the source does not establish a signal, use "not-evidenced" rather than guessing. Founder count alone is not substantive founder evidence.`,

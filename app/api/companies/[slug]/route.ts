@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { parseYcCompanyPage } from "@/lib/yc/company-detail";
+import { fetchYcCompanyDetail } from "@/lib/yc/company-data";
 
 export async function GET(_request: Request, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params;
@@ -8,13 +8,7 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
   }
 
   try {
-    const response = await fetch(`https://www.ycombinator.com/companies/${encodeURIComponent(slug)}`, {
-      headers: { Accept: "text/html" },
-      next: { revalidate: 1800 },
-    });
-    if (!response.ok) throw new Error(`YC returned ${response.status}`);
-
-    return NextResponse.json(parseYcCompanyPage(await response.text()), {
+    return NextResponse.json(await fetchYcCompanyDetail(slug), {
       headers: { "Cache-Control": "public, s-maxage=1800, stale-while-revalidate=86400" },
     });
   } catch (error) {

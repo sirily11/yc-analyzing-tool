@@ -2,6 +2,9 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight, LockKeyhole } from "lucide-react";
 import { authStatus, getCurrentUser, signIn } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { createPageMetadata } from "@/lib/site-metadata";
+
+export const metadata = createPageMetadata("login", "/login", { privatePage: true });
 
 export default async function LoginPage() {
   const user = await getCurrentUser();

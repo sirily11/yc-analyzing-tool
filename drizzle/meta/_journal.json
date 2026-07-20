@@ -15,6 +15,13 @@
       "when": 1784475970633,
       "tag": "0001_crazy_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784533594290,
+      "tag": "0002_petite_mimic",
+      "breakpoints": true
     }
   ]
 }

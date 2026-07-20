@@ -1,12 +1,13 @@
 import "server-only";
-import { and, asc, desc, eq, gte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import type { UIMessage } from "ai";
 import { appConfig } from "@/config";
 import { DEFAULT_CHAT_TITLE } from "@/lib/chat-title";
 import type { ApplicationProfile, PredictionResult, ReportDocument, SourceFileMetadata } from "@/lib/types/analysis";
+import type { CompanyClusterMap, CompanyResearchDraft, CompanyResearchMapInput, CompanyResearchReportDocument } from "@/lib/types/company-research";
 import { stripEphemeralParts } from "@/lib/privacy";
 import { db } from "./index";
-import { analysisRuns, chatDocuments, chats, messages, reports } from "./schema";
+import { analysisRuns, chatDocuments, chats, companyResearchReports, messages, reportResearchJobs, reports, type ReportResearchTarget } from "./schema";
 
 export async function createChat(userId: string, title = DEFAULT_CHAT_TITLE) {
   const id = crypto.randomUUID(); const now = new Date();
@@ -101,15 +102,92 @@ export async function listChatDocumentObjectKeys(userId: string, chatId: string)
     .where(and(eq(chatDocuments.userId, userId), eq(chatDocuments.chatId, chatId)));
 }
 
-export async function createReport(input: { userId: string; chatId: string; sourceFile: SourceFileMetadata; title: string; parentReportId?: string | null }) {
+export async function createReport(input: { userId: string; chatId: string; sourceFile: SourceFileMetadata; sourceDocumentId?: string | null; title: string; parentReportId?: string | null }) {
   const id = crypto.randomUUID(); const now = new Date();
-  await db.insert(reports).values({ id, userId: input.userId, chatId: input.chatId, parentReportId: input.parentReportId ?? null, status: "processing", title: input.title, sourceFile: input.sourceFile, profile: null, prediction: null, document: null, modelVersion: appConfig.modelVersion, datasetVersion: appConfig.datasetVersion, createdAt: now, updatedAt: now });
+  await db.insert(reports).values({ id, userId: input.userId, chatId: input.chatId, parentReportId: input.parentReportId ?? null, status: "processing", title: input.title, sourceFile: input.sourceFile, sourceDocumentId: input.sourceDocumentId ?? null, profile: null, prediction: null, document: null, modelVersion: appConfig.modelVersion, datasetVersion: appConfig.datasetVersion, createdAt: now, updatedAt: now });
   await db.insert(analysisRuns).values({ id: crypto.randomUUID(), userId: input.userId, chatId: input.chatId, reportId: id, stage: "approved", createdAt: now, updatedAt: now });
   return id;
 }
 
 export async function completeReport(input: { id: string; userId: string; profile: ApplicationProfile; prediction: PredictionResult; document: ReportDocument }) {
-  await db.update(reports).set({ status: "complete", profile: input.profile, prediction: input.prediction, document: input.document, updatedAt: new Date() }).where(and(eq(reports.id, input.id), eq(reports.userId, input.userId)));
+  await db.update(reports).set({ status: "complete", profile: input.profile, prediction: input.prediction, document: input.document, failureCode: null, updatedAt: new Date() }).where(and(eq(reports.id, input.id), eq(reports.userId, input.userId)));
+}
+
+export async function beginReportResearch(input: { id: string; userId: string; profile: ApplicationProfile; prediction: PredictionResult }) {
+  const now = new Date();
+  const updated = await db.update(reports).set({
+    status: "researching",
+    profile: input.profile,
+    prediction: input.prediction,
+    reportModel: appConfig.reportModel,
+    researchDeadlineAt: new Date(now.getTime() + appConfig.reportResearch.deadlineMs),
+    failureCode: null,
+    updatedAt: now,
+  }).where(and(eq(reports.id, input.id), eq(reports.userId, input.userId), eq(reports.status, "processing"))).returning({ id: reports.id });
+  return updated[0] ?? null;
+}
+
+export async function addReportResearchJobs(values: Array<{
+  reportId: string;
+  kind: "crawl" | "batch-scrape";
+  comparableCompanyId?: number | null;
+  firecrawlJobId: string;
+  targets: ReportResearchTarget[];
+}>) {
+  if (!values.length) return;
+  const now = new Date();
+  await db.insert(reportResearchJobs).values(values.map((value) => ({
+    id: crypto.randomUUID(),
+    reportId: value.reportId,
+    kind: value.kind,
+    comparableCompanyId: value.comparableCompanyId ?? null,
+    firecrawlJobId: value.firecrawlJobId,
+    status: "running" as const,
+    targets: value.targets,
+    createdAt: now,
+    updatedAt: now,
+  })));
+}
+
+export async function listReportResearchJobs(reportId: string) {
+  return db.select().from(reportResearchJobs).where(eq(reportResearchJobs.reportId, reportId));
+}
+
+export async function getReportResearchJobByExternalId(firecrawlJobId: string) {
+  return (await db.select().from(reportResearchJobs).where(eq(reportResearchJobs.firecrawlJobId, firecrawlJobId)).limit(1))[0] ?? null;
+}
+
+export async function markReportResearchJob(input: { firecrawlJobId: string; status: "complete" | "failed"; creditsUsed?: number; failureCode?: string | null }) {
+  const updated = await db.update(reportResearchJobs).set({
+    status: input.status,
+    creditsUsed: Math.max(0, Math.floor(input.creditsUsed ?? 0)),
+    failureCode: input.failureCode ?? null,
+    lastCheckedAt: new Date(),
+    updatedAt: new Date(),
+  }).where(eq(reportResearchJobs.firecrawlJobId, input.firecrawlJobId)).returning();
+  return updated[0] ?? null;
+}
+
+export async function touchReportResearchJob(firecrawlJobId: string) {
+  await db.update(reportResearchJobs).set({ lastCheckedAt: new Date(), updatedAt: new Date() }).where(eq(reportResearchJobs.firecrawlJobId, firecrawlJobId));
+}
+
+export async function getReportById(id: string) {
+  return (await db.select().from(reports).where(eq(reports.id, id)).limit(1))[0] ?? null;
+}
+
+export async function claimReportDrafting(id: string) {
+  const updated = await db.update(reports).set({ status: "drafting", updatedAt: new Date() })
+    .where(and(eq(reports.id, id), eq(reports.status, "researching")))
+    .returning();
+  return updated[0] ?? null;
+}
+
+export async function reclaimStaleReportDrafting(id: string, staleBefore: Date) {
+  const updated = await db.update(reports).set({ updatedAt: new Date() })
+    .where(and(eq(reports.id, id), eq(reports.status, "drafting"), lte(reports.updatedAt, staleBefore)))
+    .returning();
+  return updated[0] ?? null;
 }
 
 export async function failReport(id: string, userId: string, failureCode: string) {
@@ -124,8 +202,75 @@ export async function getReport(userId: string, id: string) {
   return (await db.select().from(reports).where(and(eq(reports.id, id), eq(reports.userId, userId))).limit(1))[0] ?? null;
 }
 
+export async function createCompanyResearchReport(input: { userId: string; chatId: string; request: string; companyIds: number[] }) {
+  const id = crypto.randomUUID(); const now = new Date();
+  await db.insert(companyResearchReports).values({
+    id,
+    userId: input.userId,
+    chatId: input.chatId,
+    status: "researching",
+    title: input.companyIds.length === 1 ? "YC company research" : `${input.companyIds.length} YC companies · Research`,
+    request: input.request,
+    companyIds: input.companyIds,
+    document: null,
+    mapInput: null,
+    map: null,
+    modelVersion: appConfig.modelVersion,
+    datasetVersion: appConfig.datasetVersion,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return id;
+}
+
+export async function storeCompanyResearchDraft(input: { id: string; userId: string; draft: CompanyResearchDraft; mapInput: CompanyResearchMapInput }) {
+  const updated = await db.update(companyResearchReports).set({
+    status: "mapping",
+    title: input.draft.title,
+    document: input.draft,
+    mapInput: input.mapInput,
+    updatedAt: new Date(),
+  }).where(and(eq(companyResearchReports.id, input.id), eq(companyResearchReports.userId, input.userId), eq(companyResearchReports.status, "researching"))).returning({ id: companyResearchReports.id });
+  return updated[0] ?? null;
+}
+
+export async function completeCompanyResearchReport(input: { id: string; userId: string; map: CompanyClusterMap; document: CompanyResearchReportDocument }) {
+  const updated = await db.update(companyResearchReports).set({
+    status: "complete",
+    document: input.document,
+    map: input.map,
+    mapInput: null,
+    failureCode: null,
+    updatedAt: new Date(),
+  }).where(and(eq(companyResearchReports.id, input.id), eq(companyResearchReports.userId, input.userId), eq(companyResearchReports.status, "mapping"))).returning({ id: companyResearchReports.id });
+  return updated[0] ?? null;
+}
+
+export async function failCompanyResearchReport(id: string, userId: string, failureCode: string) {
+  await db.update(companyResearchReports).set({ status: "failed", failureCode, mapInput: null, updatedAt: new Date() })
+    .where(and(eq(companyResearchReports.id, id), eq(companyResearchReports.userId, userId), inArray(companyResearchReports.status, ["researching", "mapping"])));
+}
+
+export async function getCompanyResearchReport(userId: string, id: string) {
+  return (await db.select().from(companyResearchReports).where(and(eq(companyResearchReports.id, id), eq(companyResearchReports.userId, userId))).limit(1))[0] ?? null;
+}
+
+export async function getCompanyResearchMapInput(userId: string, chatId: string, id: string) {
+  return (await db.select({ id: companyResearchReports.id, status: companyResearchReports.status, mapInput: companyResearchReports.mapInput })
+    .from(companyResearchReports)
+    .where(and(eq(companyResearchReports.id, id), eq(companyResearchReports.userId, userId), eq(companyResearchReports.chatId, chatId)))
+    .limit(1))[0] ?? null;
+}
+
+export async function listCompanyResearchReports(userId: string) {
+  return db.select().from(companyResearchReports).where(eq(companyResearchReports.userId, userId)).orderBy(desc(companyResearchReports.createdAt));
+}
+
 export async function assertWithinRateLimit(userId: string) {
   const since = new Date(Date.now() - 60 * 60 * 1000);
-  const recent = await db.select({ id: analysisRuns.id }).from(analysisRuns).where(and(eq(analysisRuns.userId, userId), gte(analysisRuns.createdAt, since)));
-  if (recent.length >= appConfig.analysisRateLimitPerHour) throw new Error("ANALYSIS_RATE_LIMIT");
+  const [applicationRuns, companyRuns] = await Promise.all([
+    db.select({ id: analysisRuns.id }).from(analysisRuns).where(and(eq(analysisRuns.userId, userId), gte(analysisRuns.createdAt, since))),
+    db.select({ id: companyResearchReports.id }).from(companyResearchReports).where(and(eq(companyResearchReports.userId, userId), gte(companyResearchReports.createdAt, since))),
+  ]);
+  if (applicationRuns.length + companyRuns.length >= appConfig.analysisRateLimitPerHour) throw new Error("ANALYSIS_RATE_LIMIT");
 }
