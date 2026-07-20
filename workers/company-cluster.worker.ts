@@ -9,6 +9,13 @@ import type { CompanyResearchMapInput } from "@/lib/types/company-research";
 import type { YcCompany } from "@/lib/types/company";
 
 const context: DedicatedWorkerGlobalScope = self as unknown as DedicatedWorkerGlobalScope;
+type CompanyDirectoryResponse = { companies: YcCompany[] };
+
+async function loadCompanyDirectory() {
+  const response = await fetch("/api/yc/companies");
+  if (!response.ok) throw new Error("YC_COMPANY_DIRECTORY_UNAVAILABLE");
+  return ((await response.json()) as CompanyDirectoryResponse).companies;
+}
 
 function progress(progress: number, label: string) {
   context.postMessage({ type: "progress", value: { progress, label } });
@@ -22,7 +29,7 @@ context.onmessage = async (event: MessageEvent<{ mapInput: CompanyResearchMapInp
   try {
     progress(0.08, "Loading the versioned company model");
     const [directory, archive] = await Promise.all([
-      fetch("/data/yc-companies.json").then((response) => response.json()) as Promise<YcCompany[]>,
+      loadCompanyDirectory(),
       downloadModelArchive(appConfig.modelArchiveUrl),
     ]);
     embeddingModel = archive.manifest.embeddingModel;
@@ -71,7 +78,7 @@ context.onmessage = async (event: MessageEvent<{ mapInput: CompanyResearchMapInp
   } catch (cause) {
     if (!companies.length) {
       try {
-        const directory = await fetch("/data/yc-companies.json").then((response) => response.json()) as YcCompany[];
+        const directory = await loadCompanyDirectory();
         const targets = directory.filter((company) => targetIds.has(company.id));
         const contextCompanies = directory.filter((company) => !targetIds.has(company.id)).slice(0, Math.max(0, 50 - targets.length));
         companies = [...targets, ...contextCompanies];

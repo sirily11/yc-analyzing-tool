@@ -34,7 +34,7 @@ export function chatToolErrorMessage(error: unknown) {
     return "No usable live public sources were retrieved for this company research.";
   }
   if (details.includes("YC_COMPANY_NOT_FOUND")) {
-    return "One or more selected YC companies are unavailable in the active 2022–2026 dataset.";
+    return "One or more selected YC companies are unavailable in the current YC directory.";
   }
   if (details.includes("DOCUMENT_NOT_AVAILABLE")) {
     return "The retained pitch deck is unavailable. Attach the PDF again to analyze that application.";

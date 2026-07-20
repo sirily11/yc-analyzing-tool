@@ -1,5 +1,5 @@
 import { Circle, Document, Line, Link, Page, Rect, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
-import { projectReportMapPoint, REPORT_MAP_COLORS, REPORT_MAP_HEIGHT, REPORT_MAP_WIDTH, selectReportMapCompanies } from "@/lib/report-map";
+import { projectReportMapPoint, reportMapColor, REPORT_MAP_HEIGHT, REPORT_MAP_WIDTH, selectReportMapCompanies } from "@/lib/report-map";
 import type { ReportDocument } from "@/lib/types/analysis";
 import type { YcCompany } from "@/lib/types/company";
 
@@ -12,7 +12,7 @@ const styles = StyleSheet.create({
   scoreBox: { position: "absolute", right: 34, top: 43, borderLeft: "1px solid #cec6b7", paddingLeft: 18, width: 130 },
   scoreLabel: { fontSize: 7, letterSpacing: 1, textTransform: "uppercase", color: "#70695f" },
   score: { fontFamily: "Times-Roman", fontSize: 55, color: "#d85b35", lineHeight: 0.9, marginTop: 7 },
-  divider: { borderTop: "1px solid #cec6b7", marginVertical: 20 },
+  divider: { width: "100%", borderTop: "1px solid #cec6b7", marginVertical: 20 },
   sectionLabel: { fontSize: 7, letterSpacing: 1, textTransform: "uppercase", color: "#70695f", marginBottom: 8 },
   sectionTitle: { fontFamily: "Times-Roman", fontSize: 23, marginBottom: 12 },
   map: { height: 294, border: "1px solid #cec6b7", marginBottom: 12 },
@@ -100,7 +100,7 @@ export function ReportPdf({ report, companies }: { report: ReportDocument; compa
         {mapNodes.map(({ company }) => {
           const companyPoint = projectReportMapPoint(company);
           const isNearest = nearest.has(company.id);
-          return <Circle key={company.id} cx={companyPoint.x} cy={companyPoint.y} r={isNearest ? 4.8 : 2.4} fill={REPORT_MAP_COLORS[company.year] ?? "#70695f"} opacity={isNearest ? .95 : .48} />;
+          return <Circle key={company.id} cx={companyPoint.x} cy={companyPoint.y} r={isNearest ? 4.8 : 2.4} fill={reportMapColor(company.year)} opacity={isNearest ? .95 : .48} />;
         })}
         <Circle cx={candidatePoint.x} cy={candidatePoint.y} r={15} fill="#d85b35" opacity={.2} />
         <Circle cx={candidatePoint.x} cy={candidatePoint.y} r={7} fill="#d85b35" stroke="#25211d" strokeWidth={2} />
@@ -123,27 +123,37 @@ export function ReportPdf({ report, companies }: { report: ReportDocument; compa
       <View style={styles.divider} />
       <Text style={styles.sectionLabel}>Application thesis</Text>
       <Text style={styles.fullSummary}>{pdfText(report.profile.summary)}</Text>
-      <View style={styles.columns} wrap={false}>
-        <View style={styles.column}>
-          <Text style={styles.sectionLabel}>Application profile</Text>
-          {profileItems.map(([label, value]) => <View style={styles.item} key={label}>
-            <Text style={styles.muted}>{label}</Text>
-            <Text style={styles.profileValue}>{pdfText(value)}</Text>
-          </View>)}
-        </View>
-        <View style={styles.column}>
-          <Text style={styles.sectionLabel}>Closest public analogs</Text>
-          {report.comparableCompanies.slice(0, 6).map((company) => {
-            const publicCompany = companiesById.get(company.id);
-            const ycUrl = publicCompany ? `https://www.ycombinator.com/companies/${encodeURIComponent(publicCompany.slug)}` : null;
-            return <View style={styles.item} key={company.id}>
-              <Text>{pdfText(company.name)} - {Math.round(company.similarity * 100)}%</Text>
-              <Text style={styles.muted}>{pdfText(company.oneLiner)}</Text>
-              {ycUrl && <Link style={styles.ycLink} src={ycUrl}>{ycUrl}</Link>}
-            </View>;
-          })}
-        </View>
-      </View>
+      <Text style={styles.sectionLabel}>Application profile</Text>
+      {profileItems.slice(0, 6).map(([label, value]) => <View style={styles.item} key={label} wrap={false}>
+        <Text style={styles.muted}>{label}</Text>
+        <Text style={styles.profileValue}>{pdfText(value)}</Text>
+      </View>)}
+      <Footer report={report} />
+    </Page>
+
+    {founder && <Page size="A4" style={styles.page}>
+      <Text style={styles.kicker}>Founder profile</Text>
+      <Text style={styles.title}>Founder evidence.</Text>
+      {profileItems.slice(6).map(([label, value]) => <View style={styles.item} key={label} wrap={false}>
+        <Text style={styles.muted}>{label}</Text>
+        <Text style={styles.profileValue}>{pdfText(value)}</Text>
+      </View>)}
+      <Footer report={report} />
+    </Page>}
+
+    <Page size="A4" style={styles.page}>
+      <Text style={styles.kicker}>Closest public analogs</Text>
+      <Text style={styles.title}>Public company context.</Text>
+      <View style={styles.divider} />
+      {report.comparableCompanies.slice(0, 6).map((company) => {
+        const publicCompany = companiesById.get(company.id);
+        const ycUrl = publicCompany ? `https://www.ycombinator.com/companies/${encodeURIComponent(publicCompany.slug)}` : null;
+        return <View style={styles.item} key={company.id} wrap={false}>
+          <Text>{pdfText(company.name)} - {Math.round(company.similarity * 100)}%</Text>
+          <Text style={styles.muted}>{pdfText(company.oneLiner)}</Text>
+          {ycUrl && <Link style={styles.ycLink} src={ycUrl}>{ycUrl}</Link>}
+        </View>;
+      })}
       <Footer report={report} />
     </Page>
 

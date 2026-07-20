@@ -24,11 +24,11 @@ from torch import nn
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "public" / "data" / "yc-companies.json"
+DATASET_MANIFEST = ROOT / "public" / "data" / "manifest.json"
 PROFILE_DATA = ROOT / "ml" / "data" / "processed" / "company-profiles.jsonl"
 FOUNDER_PROFILE_DATA = ROOT / "ml" / "data" / "processed" / "founder-profiles.jsonl"
 FOUNDER_FEATURE_SPEC = ROOT / "lib" / "ml" / "founder-feature-spec.json"
 MODEL_VERSION = "browser-fit-v2"
-DATASET_VERSION = "yc-2022-2026-ytd-v2"
 OUTPUT = ROOT / "ml" / "artifacts" / MODEL_VERSION
 SEED = 20260720
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
@@ -220,6 +220,12 @@ def normalize_rows(values: np.ndarray) -> np.ndarray:
 
 def main() -> None:
     companies: list[dict] = json.loads(DATA.read_text())
+    dataset_manifest = json.loads(DATASET_MANIFEST.read_text())
+    dataset_version = dataset_manifest.get("version")
+    if not isinstance(dataset_version, str) or not dataset_version:
+        raise RuntimeError("The exported YC dataset manifest is missing its version.")
+    if dataset_manifest.get("companyCount") != len(companies):
+        raise RuntimeError("The exported YC dataset manifest count does not match yc-companies.json.")
     profiles = load_jsonl(PROFILE_DATA)
     founder_profiles = load_jsonl(FOUNDER_PROFILE_DATA)
     if len(profiles) != len(companies):
@@ -376,7 +382,7 @@ def main() -> None:
 
     manifest = {
         "version": MODEL_VERSION,
-        "datasetVersion": DATASET_VERSION,
+        "datasetVersion": dataset_version,
         "datasetSourceHash": source_hash(companies, founder_profiles),
         "runtime": "onnx",
         "embeddingModel": BROWSER_EMBEDDING_MODEL,

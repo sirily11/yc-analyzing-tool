@@ -80,8 +80,8 @@ function validateCitations(draft: CompanyResearchDraft) {
   }
 }
 
-export async function buildCompanyResearchDraft(input: { companies: YcCompany[]; request: string; requestId?: string; chatId?: string; signal?: AbortSignal }): Promise<CompanyResearchDraft> {
-  const deadlineSignal = AbortSignal.timeout(45_000);
+export async function buildCompanyResearchDraft(input: { companies: YcCompany[]; request: string; requestId?: string; chatId?: string; signal?: AbortSignal; timeoutMs?: number }): Promise<CompanyResearchDraft> {
+  const deadlineSignal = AbortSignal.timeout(input.timeoutMs ?? 45_000);
   const researchSignal = input.signal ? AbortSignal.any([input.signal, deadlineSignal]) : deadlineSignal;
   const retrievedAt = new Date().toISOString();
   const warnings: string[] = [];

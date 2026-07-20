@@ -1,11 +1,9 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getCurrentUser } from "@/lib/auth";
 import { getCompanyResearchReport } from "@/lib/db/repository";
 import { CompanyResearchReportPdf } from "@/lib/pdf/company-report-document";
 import { companyResearchReportDocumentSchema } from "@/lib/types/company-research";
-import type { YcCompany } from "@/lib/types/company";
+import { loadYcCompanies } from "@/lib/yc/companies";
 
 export const maxDuration = 30;
 
@@ -17,7 +15,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ reportId: 
   const parsed = companyResearchReportDocumentSchema.safeParse(row?.document);
   if (!row || row.status !== "complete" || !parsed.success) return new Response("Not found", { status: 404 });
 
-  const companies = JSON.parse(await readFile(path.join(process.cwd(), "public/data/yc-companies.json"), "utf8")) as YcCompany[];
+  const companies = await loadYcCompanies();
   const buffer = await renderToBuffer(<CompanyResearchReportPdf report={parsed.data} companies={companies} />);
   const filenameBase = (parsed.data.companies.length === 1 ? parsed.data.companies[0].name : parsed.data.title)
     .replace(/[^a-z0-9]+/gi, "-")

@@ -1,6 +1,6 @@
 # Application Signal
 
-Application Signal is an independent YC-inspired startup explorer and private business-plan analysis workspace. It maps public YC companies from 2022–2026 YTD and produces a **YC Fit Score**, never an acceptance probability.
+Application Signal is an independent YC-inspired startup explorer and private business-plan analysis workspace. Its Turso-backed directory covers public YC companies from 2020 through the current year and produces a **YC Fit Score**, never an acceptance probability.
 
 ## Local setup
 
@@ -8,14 +8,17 @@ Application Signal is an independent YC-inspired startup explorer and private bu
 bun install
 cp .env.example .env.local
 bun run db:migrate
+bun run yc:seed
 bun run dev
 ```
 
-For a local authenticated preview, set `DEV_BYPASS_AUTH=true`. This flag is ignored in production. Production uses `@rxtech-lab/authjs-rxlab` with the RxLab OIDC values in `.env.example`, Turso with `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN`, and Vercel AI Gateway with `AI_GATEWAY_API_KEY`. `AI_TITLE_MODEL` selects the lightweight model used to generate each new chat's title asynchronously from its first user message.
+Set an explicit remote `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `AI_GATEWAY_API_KEY` before the migration and one-time seed; the YC directory intentionally has no local-file bootstrap. For a local authenticated preview, set `DEV_BYPASS_AUTH=true`. This flag is ignored in production. Production uses `@rxtech-lab/authjs-rxlab` with the RxLab OIDC values in `.env.example`. `AI_TITLE_MODEL` selects the lightweight model used to generate each new chat's title asynchronously from its first user message. `AI_EMBEDDING_MODEL` must remain the same for YC ingestion and query-time semantic search.
 
 ## Data and privacy
 
-- `bun run data:sync` refreshes the compact public directory asset from `yc-oss/api` and writes a versioned manifest.
+- `bun run yc:seed` downloads the complete `yc-oss/api` feed, keeps companies from 2020 through the current UTC year, embeds only IDs missing from Turso, and stores the directory plus its manifest in the database.
+- `bun run yc:sync` is the idempotent future-update command. It scans the complete feed and adds only new stable YC IDs, so newly published batches are discovered without hardcoded season names.
+- `bun run yc:export` writes an ignored `public/data/yc-companies.json` plus `manifest.json` from Turso only for offline model training and release work. The deployed app never searches or reads that JSON.
 - PDF text extraction occurs in the browser. The original PDF and extracted representation are uploaded through short-lived signed URLs to the configured S3 bucket under `S3_DOCUMENT_PREFIX`.
 - Turso stores owner-scoped object references, chat UI parts, structured profiles, model results, and reports. Restored approval requests resolve their document through the owner and conversation scope instead of browser memory.
 - Deleting a conversation deletes its retained S3 objects before removing its messages and reports. Reports and PDF downloads repeat the same ownership check.
@@ -30,9 +33,13 @@ Server logs use structured `[report-research]` lifecycle events for Firecrawl re
 
 ## YC company research and cluster maps
 
-Chat can search and filter the versioned 2022–2026 public YC directory, inspect exact company profiles, and compare up to ten companies. Local directory lookup is immediate. Current-web research, dynamic mapping, and private report persistence share one explicit `company-research` approval and the same hourly analysis limit as application reports.
+Chat and the public explorer use natural-language embedding search over the Turso-backed 2020–current-year YC directory, with optional exact filters. The anonymous public endpoint applies a Turso-backed per-client quota before generating a paid query embedding. They can inspect exact company profiles and compare up to ten companies. Current-web research, dynamic mapping, and private report persistence share one explicit `company-research` approval and the same hourly analysis limit as application reports.
+
+Run migrations before the first seed. Both ingestion commands intentionally require an explicit remote `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `AI_GATEWAY_API_KEY`; they never fall back to `local.db`. The default `openai/text-embedding-3-small` contract stores 1,536-dimensional vectors. Changing that model or dimension requires a deliberate full re-embedding rather than mixing vectors in one index.
 
 Configure `FIRECRAWL_API_KEY` to enable research. Each company is limited to three public search results and three same-origin official pages. The server keeps structured summaries, cited claims, source metadata, and coverage warnings; it does not persist scraped Markdown. A report fails visibly when all live research operations fail.
+
+YC company reports run asynchronously through Vercel Workflow. The authenticated request creates the owner-scoped report row, schedules the durable research run, and returns its private progress URL with HTTP 202. Firecrawl retrieval and AI synthesis execute as retryable Workflow steps; the progress page polls the Turso-backed report status and runs the existing versioned semantic map in the browser once the cited draft reaches `mapping`. Wrap `next.config.ts` with `withWorkflow()` and keep the `workflow` package installed so local development and Vercel deployments register the workflow and step routes.
 
 Dynamic maps run in the browser using the active model archive. They combine normalized startup latent vectors and current website-language embeddings with a deterministic 70/30 distance blend, add at most 40 nearby reference companies, and fall back to the versioned global map with a warning if embedding or UMAP fails. Saved company reports and map inputs are owner-only and do not affect the dashboard's YC Fit average.
 
@@ -59,19 +66,28 @@ Because the browser uploads PDFs directly through short-lived signed URLs, the S
 
 The founder-aware v2 model has independent startup and founder branches. Founder inputs are reduced to controlled job-relevant signals; raw biographies, names, schools, employers, demographics, and prestige never enter the model or release archive. Run `bun run model:founders` before training to resume the YC-hosted biography fetch and structured enrichment checkpoints.
 
-The full training command validates and promotes the artifacts, creates `ml/releases/<random-uuid>-browser-fit-v2.zip`, uploads it through the S3-compatible endpoint, verifies the uploaded byte count, and atomically activates the model version, dataset version, archive URL, and learned directory coordinates. If validation, upload, or local activation fails, the previously configured model remains active.
+The full training command validates and promotes the artifacts, creates `ml/releases/<random-uuid>-browser-fit-v2.zip`, uploads it through the S3-compatible endpoint, verifies the uploaded byte count, validates learned coordinates against the model reference IDs, updates model-backed coordinates in one Turso transaction, and activates the model version, dataset version, and archive URL in `config.ts`. Failed coordinate or local-config activation rolls back the working release; a uniquely named uploaded archive may remain unused.
 
 ```bash
+# Seed an empty Turso database with 2020 through the current UTC year
+bun run yc:seed
+
+# Add only YC IDs that have appeared since the last seed
+bun run yc:sync
+
+# Export the DB directory to ignored local files for offline model work
+bun run yc:export
+
 # Train, validate, package, upload, and update config.ts
 bun run model:train
 
 # Resume public YC founder-page enrichment and conservative categorization
 bun run model:founders
 
-# Package and upload the currently promoted model without retraining
+# Package and upload the currently promoted model, then activate Turso coordinates
 bun run model:upload
 
-# Package locally without uploading or changing config.ts
+# Package locally without uploading or changing Turso/config.ts
 bun run model:upload -- --dry-run --model-version browser-fit-v2
 ```
 

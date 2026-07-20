@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/lib/db/repository", () => ({ getCompanyResearchReport: vi.fn() }));
-vi.mock("node:fs/promises", () => ({ readFile: vi.fn() }));
+vi.mock("@/lib/yc/companies", () => ({ loadYcCompanies: vi.fn() }));
 
 import { GET } from "@/app/api/company-reports/[reportId]/pdf/route";
 import { getCurrentUser } from "@/lib/auth";
@@ -12,7 +12,7 @@ import { getCompanyResearchReport } from "@/lib/db/repository";
 import { CompanyResearchReportPdf } from "@/lib/pdf/company-report-document";
 import { companyResearchReportDocumentSchema } from "@/lib/types/company-research";
 import type { YcCompany } from "@/lib/types/company";
-import { readFile } from "node:fs/promises";
+import { loadYcCompanies } from "@/lib/yc/companies";
 
 const companies = [
   {
@@ -127,7 +127,7 @@ describe("company research PDF", () => {
   it("returns an owned completed report as a private attachment", async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({ id: "owner", name: "Owner", email: "owner@example.com", roles: [] });
     vi.mocked(getCompanyResearchReport).mockResolvedValue({ status: "complete", document: report } as never);
-    vi.mocked(readFile).mockResolvedValue(JSON.stringify(companies));
+    vi.mocked(loadYcCompanies).mockResolvedValue(companies);
 
     const response = await GET(new Request("https://example.test"), { params: Promise.resolve({ reportId }) });
 

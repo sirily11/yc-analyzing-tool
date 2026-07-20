@@ -4,18 +4,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CompanyDetail } from "@/components/company-detail";
 import type { DatasetManifest, YcCompany } from "@/lib/types/company";
 
-const YEAR_COLORS: Record<number, string> = {
-  2022: "#d55b38",
-  2023: "#b78b3d",
-  2024: "#5478a8",
-  2025: "#806b9f",
-  2026: "#315f49",
-};
+const FIRST_DIRECTORY_YEAR = 2020;
+const DIRECTORY_YEARS = Array.from(
+  { length: new Date().getUTCFullYear() - FIRST_DIRECTORY_YEAR + 1 },
+  (_, index) => FIRST_DIRECTORY_YEAR + index,
+);
+const YEAR_PALETTE = ["#8d5f4d", "#b06f45", "#d55b38", "#b78b3d", "#5478a8", "#806b9f", "#315f49", "#3f7287", "#9b5b75"];
+const YEAR_COLORS = Object.fromEntries(
+  DIRECTORY_YEARS.map((value, index) => [value, YEAR_PALETTE[index % YEAR_PALETTE.length]]),
+) as Record<number, string>;
 
 type Pointer = { x: number; y: number; company: YcCompany } | null;
 
 export function PublicExplorer() {
   const [companies, setCompanies] = useState<YcCompany[]>([]);
+  const [directory, setDirectory] = useState<YcCompany[]>([]);
   const [manifest, setManifest] = useState<DatasetManifest | null>(null);
   const [query, setQuery] = useState("");
   const [year, setYear] = useState<number | null>(null);
@@ -25,16 +28,69 @@ export function PublicExplorer() {
   const [pointer, setPointer] = useState<Pointer>(null);
   const [selected, setSelected] = useState<YcCompany | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searching, setSearching] = useState(false);
+  const [directoryLoading, setDirectoryLoading] = useState(true);
+  const [directoryError, setDirectoryError] = useState<string | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/data/yc-companies.json").then((response) => response.json()),
-      fetch("/data/manifest.json").then((response) => response.json()),
-    ]).then(([companyData, manifestData]) => {
-      setCompanies(companyData as YcCompany[]);
-      setManifest(manifestData as DatasetManifest);
-    });
+    const controller = new AbortController();
+    fetch("/api/yc/companies", { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("YC_DIRECTORY_UNAVAILABLE");
+        return response.json() as Promise<{ companies: YcCompany[]; manifest: DatasetManifest }>;
+      })
+      .then((result) => {
+        setDirectory(result.companies);
+        setManifest(result.manifest);
+        setDirectoryError(null);
+      })
+      .catch((cause) => {
+        if (!controller.signal.aborted) setDirectoryError(cause instanceof Error ? cause.message : "YC_DIRECTORY_UNAVAILABLE");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setDirectoryLoading(false);
+      });
+    return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    const hasSearchOrFilters = Boolean(query.trim() || year || industry !== "All sectors" || market !== "All markets" || area !== "All areas");
+    if (!hasSearchOrFilters) {
+      setCompanies(directory);
+      setPointer(null);
+      setSelected((current) => current && directory.some((company) => company.id === current.id) ? current : null);
+      return;
+    }
+    const controller = new AbortController();
+    const delay = query.trim() ? 450 : 0;
+    const timeout = window.setTimeout(async () => {
+      const parameters = new URLSearchParams();
+      if (query.trim()) parameters.set("query", query.trim());
+      if (year) parameters.set("year", String(year));
+      if (industry !== "All sectors") parameters.set("industry", industry);
+      if (market !== "All markets") parameters.set("targetMarket", market);
+      if (area !== "All areas") parameters.set("operatingArea", area);
+      setSearching(true);
+      setDirectoryError(null);
+      try {
+        const response = await fetch(`/api/yc/companies?${parameters}`, { signal: controller.signal });
+        if (!response.ok) throw new Error("YC_DIRECTORY_UNAVAILABLE");
+        const result = await response.json() as { companies: YcCompany[]; manifest: DatasetManifest };
+        setCompanies(result.companies);
+        setManifest(result.manifest);
+        setPointer(null);
+        setSelected((current) => current && result.companies.some((company) => company.id === current.id) ? current : null);
+      } catch (cause) {
+        if (!controller.signal.aborted) setDirectoryError(cause instanceof Error ? cause.message : "YC_DIRECTORY_UNAVAILABLE");
+      } finally {
+        if (!controller.signal.aborted) setSearching(false);
+      }
+    }, delay);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [query, year, industry, market, area, directory]);
 
   useEffect(() => {
     if (!filtersOpen) return;
@@ -45,21 +101,10 @@ export function PublicExplorer() {
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [filtersOpen]);
 
-  const industries = useMemo(() => [...new Set(companies.map((item) => item.industry))].sort(), [companies]);
-  const markets = useMemo(() => [...new Set(companies.map((item) => item.targetMarket))].sort(), [companies]);
-  const areas = useMemo(() => [...new Set(companies.map((item) => item.operatingArea))].sort(), [companies]);
-
-  const visible = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return companies.filter((company) => {
-      if (year && company.year !== year) return false;
-      if (industry !== "All sectors" && company.industry !== industry) return false;
-      if (market !== "All markets" && company.targetMarket !== market) return false;
-      if (area !== "All areas" && company.operatingArea !== area) return false;
-      if (normalized && !`${company.name} ${company.oneLiner} ${company.industry}`.toLowerCase().includes(normalized)) return false;
-      return true;
-    });
-  }, [companies, query, year, industry, market, area]);
+  const industries = useMemo(() => [...new Set(directory.map((item) => item.industry))].sort(), [directory]);
+  const markets = useMemo(() => [...new Set(directory.map((item) => item.targetMarket))].sort(), [directory]);
+  const areas = useMemo(() => [...new Set(directory.map((item) => item.operatingArea))].sort(), [directory]);
+  const visible = companies;
 
   const reset = () => {
     setQuery(""); setYear(null); setIndustry("All sectors"); setMarket("All markets"); setArea("All areas"); setPointer(null); setSelected(null);
@@ -77,14 +122,14 @@ export function PublicExplorer() {
     <>
       <section className="hero" id="top">
         <div>
-          <p className="eyebrow">Five years of public Y Combinator companies</p>
+          <p className="eyebrow">Public Y Combinator companies from 2020 to today</p>
           <h1>See where your startup fits.</h1>
         </div>
         <div className="hero-aside">
           <p>Explore the patterns across recent YC companies—then turn your business plan into a private, evidence-led fit report.</p>
           <div className="stats" aria-label="Dataset summary">
             <div className="stat"><strong>{(manifest?.companyCount ?? companies.length).toLocaleString()}</strong><span>companies</span></div>
-            <div className="stat"><strong>{companies.length ? Math.round(companies.filter((item) => item.aiLinked).length / companies.length * 100) : 0}%</strong><span>AI-linked</span></div>
+            <div className="stat"><strong>{directory.length ? Math.round(directory.filter((item) => item.aiLinked).length / directory.length * 100) : 0}%</strong><span>AI-linked</span></div>
             <div className="stat"><strong>{manifest?.batches.length ?? "—"}</strong><span>batches</span></div>
           </div>
         </div>
@@ -98,18 +143,19 @@ export function PublicExplorer() {
         {filtersOpen && <button className="filter-backdrop" type="button" aria-label="Close directory filters" onClick={() => setFiltersOpen(false)} />}
         <aside id="directory-filters" className={`explorer-panel filter-panel ${filtersOpen ? "open" : ""}`} role={filtersOpen ? "dialog" : undefined} aria-modal={filtersOpen || undefined} aria-label={filtersOpen ? "Directory filters" : undefined}>
           <div className="panel-heading"><span className="section-index">01 / Filter</span><span className="filter-heading-actions"><button className="text-action" onClick={reset}>Reset</button><button className="text-action mobile-sheet-close" onClick={() => setFiltersOpen(false)}>Close</button></span></div>
-          <div className="field"><label htmlFor="company-search">Find a company or theme</label><input id="company-search" className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. robotics, climate, Stripe" type="search" /></div>
-          <div className="field"><label>Batch year</label><div className="year-grid">{[null, 2022, 2023, 2024, 2025, 2026].map((item) => <button key={item ?? "all"} className={`year-button ${year === item ? "active" : ""}`} onClick={() => setYear(item)}>{item ? String(item).slice(2) : "All"}</button>)}</div></div>
+          <div className="field"><label htmlFor="company-search">Describe a company or theme</label><input id="company-search" className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="e.g. tools that automate warehouse operations" type="search" /></div>
+          <div className="field"><label>Batch year</label><div className="year-grid">{[null, ...DIRECTORY_YEARS].map((item) => <button key={item ?? "all"} className={`year-button ${year === item ? "active" : ""}`} onClick={() => setYear(item)}>{item ? String(item).slice(2) : "All"}</button>)}</div></div>
           <FilterSelect id="industry" label="YC industry" value={industry} onChange={setIndustry} all="All sectors" values={industries} />
           <FilterSelect id="market" label="Target market" value={market} onChange={setMarket} all="All markets" values={markets} />
           <FilterSelect id="area" label="Operating area" value={area} onChange={setArea} all="All areas" values={areas} />
           <div className="filter-metrics">
-            <div className="filter-metric"><span>Visible</span><strong>{visible.length.toLocaleString()}</strong></div>
+            <div className="filter-metric"><span>{searching || directoryLoading ? "Searching" : "Visible"}</span><strong>{searching || directoryLoading ? "…" : visible.length.toLocaleString()}</strong></div>
             <div className="filter-metric"><span>AI-linked</span><strong>{aiDensity}%</strong></div>
             <div className="filter-metric"><span>SF Bay</span><strong>{sfDensity}%</strong></div>
             <div className="filter-metric"><span>Hiring</span><strong>{hiringCount.toLocaleString()}</strong></div>
           </div>
           <button className="mobile-filter-submit" type="button" onClick={() => setFiltersOpen(false)}>Show {visible.length.toLocaleString()} companies</button>
+          {directoryError && <p role="alert">The YC directory is temporarily unavailable.</p>}
         </aside>
         <CompanyMap companies={visible} pointer={pointer} selected={selected} onPointer={setPointer} onSelect={setSelected} />
         <aside className={`explorer-panel readout ${selected ? "company-detail-open" : ""}`}>

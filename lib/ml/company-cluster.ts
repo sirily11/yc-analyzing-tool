@@ -1,6 +1,6 @@
 "use client";
 
-import { companyResearchMapInputSchema, type CompanyClusterMap } from "@/lib/types/company-research";
+import type { CompanyClusterMap } from "@/lib/types/company-research";
 
 export type CompanyClusterProgress = { progress: number; label: string };
 
@@ -12,6 +12,7 @@ export async function failCompanyClusterMap(reportId: string) {
 export async function runCompanyClusterMap(reportId: string, onProgress: (progress: CompanyClusterProgress) => void, signal?: AbortSignal): Promise<CompanyClusterMap> {
   const response = await fetch(`/api/company-reports/${encodeURIComponent(reportId)}/map-input`, { signal });
   if (!response.ok) throw new Error(response.status === 404 ? "Company research map input is unavailable." : "Could not load company research map input.");
+  const { companyResearchMapInputSchema } = await import("@/lib/types/company-research");
   const mapInput = companyResearchMapInputSchema.parse(await response.json());
   return new Promise((resolve, reject) => {
     const worker = new Worker(new URL("../../workers/company-cluster.worker.ts", import.meta.url), { type: "module" });

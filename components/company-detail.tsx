@@ -3,15 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Sparkles, X } from "lucide-react";
-import { failCompanyClusterMap, runCompanyClusterMap, type CompanyClusterProgress } from "@/lib/ml/company-cluster";
 import type { YcCompany, YcCompanyDetail } from "@/lib/types/company";
 
-type ReportGenerationStage = "idle" | "confirm" | "researching" | "mapping" | "publishing";
-
-async function responseError(response: Response, fallback: string) {
-  const result = await response.json().catch(() => null) as { error?: string } | null;
-  return result?.error ?? fallback;
-}
+type ReportGenerationStage = "idle" | "confirm" | "researching";
 
 export function CompanyDetail({ company, onClose, reportSourceId }: { company: YcCompany; onClose: () => void; reportSourceId?: string }) {
   const router = useRouter();
@@ -19,7 +13,6 @@ export function CompanyDetail({ company, onClose, reportSourceId }: { company: Y
   const [error, setError] = useState(false);
   const [reportStage, setReportStage] = useState<ReportGenerationStage>("idle");
   const [reportError, setReportError] = useState<string | null>(null);
-  const [clusterProgress, setClusterProgress] = useState<CompanyClusterProgress | null>(null);
   const generationAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -43,7 +36,6 @@ export function CompanyDetail({ company, onClose, reportSourceId }: { company: Y
     generationAbortRef.current?.abort();
     setReportStage("idle");
     setReportError(null);
-    setClusterProgress(null);
     return () => generationAbortRef.current?.abort();
   }, [company.id]);
 
@@ -52,9 +44,7 @@ export function CompanyDetail({ company, onClose, reportSourceId }: { company: Y
     const controller = new AbortController();
     generationAbortRef.current = controller;
     setReportError(null);
-    setClusterProgress(null);
     setReportStage("researching");
-    let reportId: string | undefined;
     try {
       const researchResponse = await fetch("/api/company-reports", {
         method: "POST",
@@ -62,27 +52,13 @@ export function CompanyDetail({ company, onClose, reportSourceId }: { company: Y
         body: JSON.stringify({ sourceReportId: reportSourceId, companyId: company.id }),
         signal: controller.signal,
       });
-      const research = await researchResponse.json().catch(() => null) as { reportId?: string; error?: string } | null;
-      if (!researchResponse.ok || !research?.reportId) {
+      const research = await researchResponse.json().catch(() => null) as { reportId?: string; href?: string; error?: string } | null;
+      if (!researchResponse.ok || !research?.reportId || !research.href) {
         throw new Error(research?.error ?? "Company research could not start.");
       }
-      reportId = research.reportId;
-      setReportStage("mapping");
-      const map = await runCompanyClusterMap(reportId, setClusterProgress, controller.signal);
-      setReportStage("publishing");
-      const publishResponse = await fetch(`/api/company-reports/${encodeURIComponent(reportId)}/publish`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ map }),
-        signal: controller.signal,
-      });
-      if (!publishResponse.ok) throw new Error(await responseError(publishResponse, "The company report could not be published."));
-      const published = await publishResponse.json() as { href?: string };
-      if (!published.href) throw new Error("The company report link is unavailable.");
       generationAbortRef.current = null;
-      router.push(published.href);
+      router.push(research.href);
     } catch (cause) {
-      if (reportId) await failCompanyClusterMap(reportId).catch(() => undefined);
       if (controller.signal.aborted) return;
       setReportError(cause instanceof Error ? cause.message : "Company report generation failed.");
       setReportStage("confirm");
@@ -91,12 +67,7 @@ export function CompanyDetail({ company, onClose, reportSourceId }: { company: Y
     }
   }
 
-  const generating = reportStage === "researching" || reportStage === "mapping" || reportStage === "publishing";
-  const generationStatus = reportStage === "researching"
-    ? "Researching the public YC profile and website sources…"
-    : reportStage === "mapping"
-      ? clusterProgress?.label ?? "Building the semantic company map in your browser…"
-      : "Publishing the private company report…";
+  const generating = reportStage === "researching";
 
   const website = company.website && /^https?:\/\//i.test(company.website) ? company.website : null;
   const ycUrl = `https://www.ycombinator.com/companies/${encodeURIComponent(company.slug)}`;
@@ -149,8 +120,8 @@ export function CompanyDetail({ company, onClose, reportSourceId }: { company: Y
         <button className="dialog-close" type="button" aria-label="Close company report dialog" onClick={() => setReportStage("idle")} disabled={generating}><X size={15} /></button>
         <span className="section-index">Public company research</span>
         <h2 id="company-report-dialog-title">Generate a report on {company.name}?</h2>
-        <p>This uses Firecrawl to research public web sources, runs the semantic map in your browser, and saves a private company report linked to this analysis.</p>
-        {generating && <div className="company-report-generation-status" role="status"><LoaderCircle className="spin" size={17} /><div><strong>{generationStatus}</strong>{reportStage === "mapping" && clusterProgress && <small>{Math.round(clusterProgress.progress * 100)}% complete</small>}</div></div>}
+        <p>This starts durable Firecrawl research in Vercel Workflow, then opens a private progress page that builds the semantic map in your browser when the research is ready.</p>
+        {generating && <div className="company-report-generation-status" role="status"><LoaderCircle className="spin" size={17} /><div><strong>Starting durable public-company research…</strong></div></div>}
         {reportError && <p className="dialog-error" role="alert">{reportError}</p>}
         {!generating && <div className="dialog-actions"><button className="button-ghost" type="button" onClick={() => setReportStage("idle")}>Cancel</button><button className="button-dark" type="button" onClick={() => void generateReport()}>Generate report</button></div>}
       </section>

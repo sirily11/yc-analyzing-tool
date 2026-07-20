@@ -22,6 +22,10 @@ export const appConfig = {
     process.env.AI_ANALYSIS_MODEL ??
     process.env.AI_CHAT_MODEL ??
     "openai/gpt-5-mini",
+  embeddingModel:
+    process.env.AI_EMBEDDING_MODEL ??
+    "openai/text-embedding-3-small",
+  embeddingDimensions: 1536,
   reportModel: resolveReportModel(),
   temperature: 0.2,
   pdf: {

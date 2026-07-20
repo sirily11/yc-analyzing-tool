@@ -1,15 +1,14 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Download, ExternalLink, ShieldCheck } from "lucide-react";
 import { CompanyClusterMap } from "@/components/company-cluster-map";
+import { CompanyResearchProgress } from "@/components/company-research-progress";
 import { requirePageUser } from "@/lib/auth";
 import { getCompanyResearchReport } from "@/lib/db/repository";
 import { companyResearchReportDocumentSchema } from "@/lib/types/company-research";
-import type { YcCompany } from "@/lib/types/company";
 import { createPageMetadata } from "@/lib/site-metadata";
+import { loadYcCompanies } from "@/lib/yc/companies";
 
 export const dynamic = "force-dynamic";
 type PageProps = { params: Promise<{ reportId: string }> };
@@ -30,15 +29,19 @@ function CitationMarks({ sourceIds, sourceNumbers }: { sourceIds: string[]; sour
 export default async function CompanyReportPage({ params }: PageProps) {
   const user = await requirePageUser(); const { reportId } = await params;
   const row = await getCompanyResearchReport(user.id, reportId);
+  if (!row) notFound();
+  if (row.status !== "complete") {
+    return <CompanyResearchProgress reportId={reportId} title={row.title} initialStatus={row.status} />;
+  }
   const parsed = companyResearchReportDocumentSchema.safeParse(row?.document);
-  if (!row || row.status !== "complete" || !parsed.success) notFound();
+  if (!parsed.success) notFound();
   const report = parsed.data;
-  const companies = JSON.parse(await readFile(path.join(process.cwd(), "public", "data", "yc-companies.json"), "utf8")) as YcCompany[];
+  const companies = await loadYcCompanies();
   const sourceNumbers = new Map(report.sources.map((source, index) => [source.id, index + 1]));
   return <main className="report-page company-report-page">
     <header className="report-topbar"><Link href="/dashboard"><ArrowLeft size={15} /> Back to reports</Link><span className="brand"><span className="brand-mark">A</span> APPLICATION SIGNAL</span><div className="report-topbar-actions"><span className="privacy-pill"><ShieldCheck size={13} /> Private</span><a className="button-dark" href={`/api/company-reports/${reportId}/pdf`}><Download size={15} /> Download PDF</a></div></header>
     <section className="report-hero company-report-hero"><div><p className="eyebrow">Private YC company research · {new Intl.DateTimeFormat("en", { dateStyle: "long" }).format(row.createdAt)}</p><h1>{report.title}</h1><p>{report.executiveSummary}</p></div><div className="company-report-count"><strong>{report.companies.length}</strong><span>researched companies</span><small>{report.sources.filter((source) => source.status === "ok").length} usable public sources</small></div></section>
-    <section className="report-map-section"><div className="report-section-heading"><span className="section-index">01 / Semantic position</span><h2>Request-specific company landscape</h2><p>The map blends versioned YC model signals with current public website language. Orange nodes are the selected companies.</p></div><CompanyClusterMap map={report.map} companies={companies} /></section>
+    <section className="report-map-section"><div className="report-section-heading"><span className="section-index">01 / Semantic position</span><h2>Explore the company landscape</h2><p>The current cluster blends versioned model signals with public website language. Switch to All YC for the live global directory layout, and filter comparison companies by YC year. Orange report companies stay visible.</p></div><CompanyClusterMap map={report.map} companies={companies} /></section>
     <section className="company-report-section"><span className="section-index">02 / Company snapshots</span><div className="company-report-profiles">{report.companies.map((company) => <article key={company.companyId}>
       <header className="company-report-profile-intro"><p className="eyebrow">{company.batch} · {company.industry}</p><h2>{company.name}</h2><p>{company.overview.text} <CitationMarks sourceIds={company.overview.sourceIds} sourceNumbers={sourceNumbers} /></p></header>
       <div className="company-report-profile-body">

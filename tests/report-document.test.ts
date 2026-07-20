@@ -69,4 +69,49 @@ describe("PDF report text", () => {
     const buffer = await renderToBuffer(ReportPdf({ report, companies }));
     expect(buffer.byteLength).toBeGreaterThan(1_000);
   });
+
+  it("separates founder-aware profile and analog content into dedicated pages", async () => {
+    const report = {
+      title: "Acme report",
+      executiveSummary: "Summary",
+      profile: {
+        companyName: "Acme",
+        summary: "Profile summary",
+        sector: "Software",
+        subindustry: "Infrastructure",
+        targetCustomer: "Business teams",
+        businessModel: "SaaS",
+        productModality: "Web app",
+        stage: "Pre-seed",
+        founderProfile: {
+          capabilityDomains: ["software"],
+          domainExperience: "direct",
+          technicalCapability: "demonstrated",
+          teamComplementarity: "unknown",
+        },
+      },
+      prediction: {
+        score: 70,
+        band: "Promising",
+        coverage: "medium",
+        clusterPoint: { x: .5, y: .5 },
+        factors: [{ label: "Market", value: "Promising", impact: "positive" }],
+        datasetVersion: "test-dataset",
+        modelVersion: "test-model",
+      },
+      comparableCompanies: [{ id: 1, name: "Peer", oneLiner: "A nearby company", similarity: .8 }],
+      strengths: ["Clear product direction"],
+      gaps: ["Clarify traction"],
+      recommendations: [{ priority: 1, title: "Add evidence", detail: "Quantify customer adoption." }],
+      methodology: "Method",
+      disclaimer: "Independent analysis.",
+    } as unknown as ReportDocument;
+
+    const buffer = await renderToBuffer(ReportPdf({ report, companies }));
+    const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const loadingTask = getDocument({ data: new Uint8Array(buffer) });
+    const pdf = await loadingTask.promise;
+    expect(pdf.numPages).toBe(5);
+    await loadingTask.destroy();
+  });
 });

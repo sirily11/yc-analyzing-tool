@@ -1,8 +1,6 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { appConfig, hasFirecrawlConfig } from "@/config";
 import { collectChatAnalysisTextForReport } from "@/lib/ai/chat-source";
 import { draftResearchReport, type ResearchMaterial } from "@/lib/analysis/report-draft";
@@ -26,6 +24,7 @@ import type { ReportResearchTarget } from "@/lib/db/schema";
 import { readRetainedDocument } from "@/lib/storage/chat-documents";
 import type { ApplicationProfile, ComparableResearchSource, ExtractedPdf, PredictionResult } from "@/lib/types/analysis";
 import type { YcCompany } from "@/lib/types/company";
+import { loadYcCompanies } from "@/lib/yc/companies";
 import {
   getFirecrawlJob,
   publicHttpsUrl,
@@ -37,10 +36,6 @@ import {
 import { researchErrorCode, researchLog } from "./log";
 
 const statusPollIntervalMs = 10_000;
-
-async function loadCompanies() {
-  return JSON.parse(await readFile(path.join(process.cwd(), "public/data/yc-companies.json"), "utf8")) as YcCompany[];
-}
 
 function selectedCompanies(prediction: PredictionResult, companies: YcCompany[]) {
   const lookup = new Map(companies.map((company) => [company.id, company]));
@@ -74,7 +69,7 @@ export async function startReportResearch(input: {
     return { reportId: input.reportId, href: `/reports/${input.reportId}`, status: "complete" as const, researchedCompanies: 0 };
   }
 
-  const companies = selectedCompanies(input.prediction, await loadCompanies());
+  const companies = selectedCompanies(input.prediction, await loadYcCompanies());
   researchLog("info", "report.research.comparables.selected", { reportId: input.reportId, companyCount: companies.length });
   const started = await Promise.all(companies.map(async (company) => {
     const [crawl, search] = await Promise.allSettled([
@@ -239,7 +234,7 @@ export async function finalizeReportResearch(reportId: string, options: { force?
   }
   researchLog("info", "report.drafting.started", { reportId, forced: Boolean(options.force), deadlinePassed });
 
-  const companies = await loadCompanies();
+  const companies = await loadYcCompanies();
   const comparables = selectedCompanies(claimed.prediction, companies);
   const research = await collectResearchMaterials(reportId);
   const coverage = researchCoverage(comparables, research.sources);

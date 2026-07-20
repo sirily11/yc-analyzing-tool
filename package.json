@@ -13,7 +13,10 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "data:sync": "bun run scripts/sync-yc-data.ts",
+    "data:sync": "bun run yc:export",
+    "yc:export": "bun run scripts/export-yc-data.ts",
+    "yc:seed": "bun run scripts/seed-yc-data.ts",
+    "yc:sync": "bun run scripts/seed-yc-data.ts --sync",
     "model:categorize": "bun run scripts/categorize-yc-data.ts",
     "model:founders": "bun run scripts/enrich-yc-founders.ts",
     "model:train": "ml/.venv/bin/python ml/train.py",
@@ -43,6 +46,7 @@
     "react-markdown": "10.1.0",
     "remark-gfm": "4.0.1",
     "umap-js": "^1.4.0",
+    "workflow": "^4.6.0",
     "zod": "4.4.3"
   },
   "devDependencies": {

@@ -1,6 +1,9 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { check, index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import type { ReportDocument, ApplicationProfile, PredictionResult, SourceFileMetadata } from "@/lib/types/analysis";
 import type { CompanyClusterMap, CompanyResearchDraft, CompanyResearchMapInput, CompanyResearchReportDocument } from "@/lib/types/company-research";
+import type { DatasetManifest } from "@/lib/types/company";
+import { f32Vector, YC_EMBEDDING_DIMENSIONS } from "@/lib/yc/embedding";
 
 export const chats = sqliteTable("chats", {
   id: text("id").primaryKey(),
@@ -113,3 +116,69 @@ export const analysisRuns = sqliteTable("analysis_runs", {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 }, (table) => [index("analysis_runs_user_created_idx").on(table.userId, table.createdAt)]);
+
+export const ycCompanies = sqliteTable("yc_companies", {
+  id: integer("id").primaryKey(),
+  name: text("name").notNull(),
+  slug: text("slug").notNull(),
+  website: text("website"),
+  batch: text("batch").notNull(),
+  year: integer("year").notNull(),
+  industry: text("industry").notNull(),
+  subindustry: text("subindustry").notNull(),
+  oneLiner: text("one_liner").notNull(),
+  longDescription: text("long_description").notNull(),
+  tags: text("tags", { mode: "json" }).$type<string[]>().notNull(),
+  location: text("location").notNull(),
+  operatingArea: text("operating_area").notNull(),
+  targetMarket: text("target_market").notNull(),
+  aiLinked: integer("ai_linked", { mode: "boolean" }).notNull(),
+  hiring: integer("hiring", { mode: "boolean" }).notNull(),
+  logo: text("logo"),
+  x: real("x").notNull(),
+  y: real("y").notNull(),
+  searchText: text("search_text").notNull(),
+  sourceHash: text("source_hash").notNull(),
+  embeddingModel: text("embedding_model").notNull(),
+  embedding: f32Vector("embedding", { dimensions: YC_EMBEDDING_DIMENSIONS }).notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [
+  index("yc_companies_slug_idx").on(table.slug),
+  index("yc_companies_year_idx").on(table.year),
+  index("yc_companies_batch_idx").on(table.batch),
+  index("yc_companies_industry_idx").on(table.industry),
+  index("yc_companies_target_market_idx").on(table.targetMarket),
+  index("yc_companies_operating_area_idx").on(table.operatingArea),
+  index("yc_companies_ai_linked_idx").on(table.aiLinked),
+  index("yc_companies_hiring_idx").on(table.hiring),
+  index("yc_companies_embedding_model_idx").on(table.embeddingModel),
+  check("yc_companies_embedding_shape_check", sql`typeof(${table.embedding}) = 'blob' AND length(${table.embedding}) = 6144`),
+]);
+
+export type YcDatasetManifestRow = DatasetManifest & {
+  embeddingModel: string;
+  embeddingDimensions: number;
+};
+
+export const ycDatasetManifest = sqliteTable("yc_dataset_manifest", {
+  id: integer("id").primaryKey(),
+  version: text("version").notNull(),
+  source: text("source").notNull(),
+  generatedAt: text("generated_at").notNull(),
+  firstYear: integer("first_year").notNull(),
+  lastYear: integer("last_year").notNull(),
+  companyCount: integer("company_count").notNull(),
+  batches: text("batches", { mode: "json" }).$type<string[]>().notNull(),
+  industries: text("industries", { mode: "json" }).$type<string[]>().notNull(),
+  embeddingModel: text("embedding_model").notNull(),
+  embeddingDimensions: integer("embedding_dimensions").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+});
+
+export const ycSemanticSearchRateLimits = sqliteTable("yc_semantic_search_rate_limits", {
+  clientKey: text("client_key").primaryKey(),
+  windowStartedAt: integer("window_started_at", { mode: "timestamp_ms" }).notNull(),
+  requestCount: integer("request_count").notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+}, (table) => [index("yc_semantic_search_rate_limits_updated_idx").on(table.updatedAt)]);

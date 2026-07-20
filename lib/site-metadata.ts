@@ -7,8 +7,8 @@ export const PAGE_SHARE = {
     browserTitle: "Application Signal — YC fit, explained",
     socialTitle: "See where your startup fits.",
     description:
-      "Explore five years of public YC companies and generate a private, data-informed application fit report.",
-    eyebrow: "PUBLIC DIRECTORY · 2022—2026 YTD",
+      "Explore public YC companies from 2020 through today and generate a private, data-informed application fit report.",
+    eyebrow: "PUBLIC DIRECTORY · 2020—CURRENT",
   },
   login: {
     browserTitle: "Sign in",

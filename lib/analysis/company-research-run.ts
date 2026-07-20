@@ -1,23 +1,18 @@
 import "server-only";
 
+import { start } from "workflow/api";
 import { appConfig } from "@/config";
-import { buildCompanyResearchDraft } from "@/lib/analysis/company-research";
 import {
   completeCompanyResearchReport,
   createCompanyResearchReport,
   failCompanyResearchReport,
   getCompanyResearchReport,
-  storeCompanyResearchDraft,
 } from "@/lib/db/repository";
-import {
-  companyResearchDraftSchema,
-  companyResearchMapInputSchema,
-  companyResearchReportDocumentSchema,
-  type CompanyClusterMap,
-} from "@/lib/types/company-research";
+import { companyResearchDraftSchema, companyResearchReportDocumentSchema, type CompanyClusterMap } from "@/lib/types/company-research";
 import { getYcCompaniesByIds } from "@/lib/yc/companies";
+import { companyResearchWorkflow } from "@/workflows/company-research";
 
-export type CompanyResearchRunStage = "company_lookup" | "report_create" | "public_research" | "map_prepare" | "draft_store";
+export type CompanyResearchRunStage = "company_lookup" | "report_create" | "workflow_start";
 
 export class CompanyResearchRunError extends Error {
   constructor(
@@ -40,40 +35,24 @@ export async function startCompanyResearchRun(input: {
   companyIds: number[];
   request: string;
   requestId?: string;
-  signal?: AbortSignal;
 }) {
   let stage: CompanyResearchRunStage = "company_lookup";
   let reportId: string | undefined;
   try {
     const uniqueIds = [...new Set(input.companyIds)];
-    const companies = await getYcCompaniesByIds(uniqueIds);
+    await getYcCompaniesByIds(uniqueIds);
     stage = "report_create";
     reportId = await createCompanyResearchReport({ userId: input.userId, chatId: input.chatId, request: input.request, companyIds: uniqueIds });
-    stage = "public_research";
-    const draft = await buildCompanyResearchDraft({
-      companies,
+    stage = "workflow_start";
+    const run = await start(companyResearchWorkflow, [{
+      userId: input.userId,
+      chatId: input.chatId,
+      reportId,
+      companyIds: uniqueIds,
       request: input.request,
       requestId: input.requestId,
-      chatId: input.chatId,
-      signal: input.signal,
-    });
-    const officialCompanyIds = new Set(draft.sources
-      .filter((source) => source.kind === "official-site" && source.status === "ok")
-      .map((source) => source.companyId));
-    stage = "map_prepare";
-    const mapInput = companyResearchMapInputSchema.parse({
-      reportId,
-      targets: draft.companies.map((company) => ({
-        companyId: company.companyId,
-        semanticText: company.semanticText,
-        textSource: officialCompanyIds.has(company.companyId) ? "firecrawl" : "dataset",
-      })),
-    });
-    stage = "draft_store";
-    if (!await storeCompanyResearchDraft({ id: reportId, userId: input.userId, draft, mapInput })) {
-      throw new Error("COMPANY_RESEARCH_NOT_STORABLE");
-    }
-    return { reportId, draft };
+    }]);
+    return { reportId, runId: run.runId };
   } catch (cause) {
     if (reportId) {
       await failCompanyResearchReport(

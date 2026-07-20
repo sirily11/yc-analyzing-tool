@@ -1,6 +1,6 @@
 import { Circle, Document, Line, Link, Page, Rect, StyleSheet, Svg, Text, View } from "@react-pdf/renderer";
 import { pdfText } from "@/lib/pdf/report-document";
-import { REPORT_MAP_COLORS, REPORT_MAP_HEIGHT, REPORT_MAP_WIDTH } from "@/lib/report-map";
+import { reportMapColor, REPORT_MAP_HEIGHT, REPORT_MAP_WIDTH } from "@/lib/report-map";
 import type { CompanyResearchReportDocument } from "@/lib/types/company-research";
 import type { YcCompany } from "@/lib/types/company";
 
@@ -107,7 +107,7 @@ export function CompanyResearchReportPdf({ report, companies }: { report: Compan
           const company = companyById.get(point.companyId);
           const x = point.x * 700 + 30;
           const y = point.y * 370 + 30;
-          const fill = point.target ? "#d85b35" : REPORT_MAP_COLORS[company?.year ?? 0] ?? "#70695f";
+          const fill = point.target ? "#d85b35" : company ? reportMapColor(company.year) : "#70695f";
           return <Circle key={point.companyId} cx={x} cy={y} r={point.target ? 5.5 : 2.5} fill={fill} opacity={point.target ? .96 : .48} stroke={point.target ? "#25211d" : "none"} strokeWidth={point.target ? 1.2 : 0} />;
         })}
       </Svg>

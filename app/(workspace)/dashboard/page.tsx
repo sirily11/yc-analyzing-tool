@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { FilePlus2, ShieldCheck } from "lucide-react";
-import { AppShell } from "@/components/app-shell";
 import { DashboardReportLibrary } from "@/components/dashboard-report-library";
-import { requirePageUser } from "@/lib/auth";
+import { getDashboardShellData } from "@/lib/dashboard-shell";
 import { dashboardReportSearchHref, filterDashboardReports, paginateDashboardReports, parseDashboardReportSearchParams, type DashboardReportCard, type DashboardReportSearchParams } from "@/lib/dashboard-reports";
-import { listChats, listCompanyResearchReports, listReports } from "@/lib/db/repository";
+import { listCompanyResearchReports, listReports } from "@/lib/db/repository";
 import { companyResearchDraftSchema } from "@/lib/types/company-research";
 import { createPageMetadata } from "@/lib/site-metadata";
 
@@ -13,9 +12,9 @@ export const dynamic = "force-dynamic";
 export const metadata = createPageMetadata("dashboard", "/dashboard", { privatePage: true });
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<DashboardReportSearchParams> }) {
-  const user = await requirePageUser();
+  const { user, chats } = await getDashboardShellData();
   const reportSearch = parseDashboardReportSearchParams(await searchParams);
-  const [chats, reports, companyReports] = await Promise.all([listChats(user.id), listReports(user.id), listCompanyResearchReports(user.id)]);
+  const [reports, companyReports] = await Promise.all([listReports(user.id), listCompanyResearchReports(user.id)]);
   const completeReports = reports.filter((report) => report.status === "complete");
   const average = completeReports.length ? Math.round(completeReports.reduce((sum, report) => sum + Number(report.prediction?.score ?? 0), 0) / completeReports.length) : 0;
   const companyReportCards: DashboardReportCard[] = companyReports.map((report) => {
@@ -53,14 +52,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const reportPage = paginateDashboardReports(filteredReports, reportSearch.page);
   if (reportPage.currentPage !== reportSearch.page) redirect(dashboardReportSearchHref(reportSearch, reportPage.currentPage));
   return (
-    <AppShell user={user} chats={chats}>
-      <div className="dashboard-page">
-        <header className="dashboard-header"><div><p className="eyebrow">Founder workspace</p><h1>Good afternoon, {user.name.split(" ")[0]}.</h1><p>Explore your application signals, compare revisions, and keep every report private.</p></div><Link className="button-primary" href="/chat/new"><FilePlus2 size={16} /> New analysis</Link></header>
-        <section className="dashboard-stats"><div><span>Completed reports</span><strong>{completedCount}</strong><small>Application and company research</small></div><div><span>Average fit signal</span><strong>{average || "—"}{average ? "/100" : ""}</strong><small>Application reports only</small></div><div><span>Private conversations</span><strong>{chats.length}</strong><small>Owned by your RxLab identity</small></div></section>
-        <section className="dashboard-section" id="reports"><div className="dashboard-section-title"><div><span className="section-index">Recent reports</span><h2>Your analysis library</h2></div><span className="privacy-pill"><ShieldCheck size={13} /> Private by default</span></div>
-          <DashboardReportLibrary reports={reportPage.reports} totalReports={reportCards.length} filteredReports={filteredReports.length} search={{ ...reportSearch, page: reportPage.currentPage }} pageCount={reportPage.pageCount} />
-        </section>
-      </div>
-    </AppShell>
+    <div className="dashboard-page">
+      <header className="dashboard-header"><div><p className="eyebrow">Founder workspace</p><h1>Good afternoon, {user.name.split(" ")[0]}.</h1><p>Explore your application signals, compare revisions, and keep every report private.</p></div><Link className="button-primary" href="/chat/new"><FilePlus2 size={16} /> New analysis</Link></header>
+      <section className="dashboard-stats"><div><span>Completed reports</span><strong>{completedCount}</strong><small>Application and company research</small></div><div><span>Average fit signal</span><strong>{average || "—"}{average ? "/100" : ""}</strong><small>Application reports only</small></div><div><span>Private conversations</span><strong>{chats.length}</strong><small>Owned by your RxLab identity</small></div></section>
+      <section className="dashboard-section" id="reports"><div className="dashboard-section-title"><div><span className="section-index">Recent reports</span><h2>Your analysis library</h2></div><span className="privacy-pill"><ShieldCheck size={13} /> Private by default</span></div>
+        <DashboardReportLibrary reports={reportPage.reports} totalReports={reportCards.length} filteredReports={filteredReports.length} search={{ ...reportSearch, page: reportPage.currentPage }} pageCount={reportPage.pageCount} />
+      </section>
+    </div>
   );
 }

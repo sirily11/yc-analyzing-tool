@@ -16,3 +16,5 @@ ml/data/processed/
 ml/artifacts/
 ml/releases/
 public/models/
+public/data/yc-companies.json
+/.swc

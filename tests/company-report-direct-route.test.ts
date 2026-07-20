@@ -55,7 +55,7 @@ describe("direct company report routes", () => {
     vi.mocked(getCurrentUser).mockResolvedValue(owner);
     vi.mocked(getReport).mockResolvedValue({ status: "complete", chatId: "chat-1" } as never);
     vi.mocked(getYcCompaniesByIds).mockResolvedValue([{ id: 42, name: "Acme" }] as never);
-    vi.mocked(startCompanyResearchRun).mockResolvedValue({ reportId: companyReportId, draft: {} } as never);
+    vi.mocked(startCompanyResearchRun).mockResolvedValue({ reportId: companyReportId, runId: "workflow-run-1" } as never);
 
     const response = await startCompanyReport(new Request("https://example.test/api/company-reports", {
       method: "POST",
@@ -63,8 +63,12 @@ describe("direct company report routes", () => {
       body: JSON.stringify({ sourceReportId, companyId: 42 }),
     }));
 
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ reportId: companyReportId });
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toEqual({
+      reportId: companyReportId,
+      href: `/company-reports/${companyReportId}`,
+      status: "researching",
+    });
     expect(response.headers.get("Cache-Control")).toBe("private, no-store");
     expect(getReport).toHaveBeenCalledWith("owner", sourceReportId);
     expect(defaultCompanyResearchRequest).toHaveBeenCalledWith("Acme");

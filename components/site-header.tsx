@@ -8,7 +8,7 @@ export function SiteHeader() {
         <span className="brand-mark">A</span>
         <span>APPLICATION SIGNAL</span>
       </Link>
-      <span className="topbar-meta">PUBLIC DIRECTORY · 2022—2026 YTD</span>
+      <span className="topbar-meta">PUBLIC DIRECTORY · 2020—CURRENT</span>
       <nav className="topbar-actions" aria-label="Primary navigation">
         <a className="button-ghost" href="#methodology">Methodology</a>
         <Link className="button-primary" href="/login">

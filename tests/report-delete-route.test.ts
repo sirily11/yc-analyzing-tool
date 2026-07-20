@@ -1,16 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/auth", () => ({ getCurrentUser: vi.fn() }));
-vi.mock("@/lib/db/repository", () => ({ deleteCompanyResearchReport: vi.fn(), deleteReport: vi.fn() }));
+vi.mock("@/lib/db/repository", () => ({ deleteCompanyResearchReport: vi.fn(), deleteReport: vi.fn(), getCompanyResearchReport: vi.fn() }));
 
 import { DELETE as deleteApplicationReport } from "@/app/api/reports/[reportId]/route";
-import { DELETE as deleteCompanyReport } from "@/app/api/company-reports/[reportId]/route";
+import { DELETE as deleteCompanyReport, GET as getCompanyReportStatus } from "@/app/api/company-reports/[reportId]/route";
 import { getCurrentUser } from "@/lib/auth";
-import { deleteCompanyResearchReport, deleteReport } from "@/lib/db/repository";
+import { deleteCompanyResearchReport, deleteReport, getCompanyResearchReport } from "@/lib/db/repository";
 
 const mockedGetCurrentUser = vi.mocked(getCurrentUser);
 const mockedDeleteReport = vi.mocked(deleteReport);
 const mockedDeleteCompanyReport = vi.mocked(deleteCompanyResearchReport);
+const mockedGetCompanyReport = vi.mocked(getCompanyResearchReport);
 const user = { id: "user-1", name: "Founder", email: "founder@example.com", roles: [] };
 
 describe("report DELETE routes", () => {
@@ -48,6 +49,18 @@ describe("report DELETE routes", () => {
     expect(mockedDeleteCompanyReport).toHaveBeenCalledWith("user-1", "report-2");
   });
 
+  it("returns only the authenticated owner's company-report status", async () => {
+    mockedGetCurrentUser.mockResolvedValue(user);
+    mockedGetCompanyReport.mockResolvedValue({ status: "researching", title: "YC company research" } as never);
+
+    const response = await getCompanyReportStatus(new Request("http://localhost/api/company-reports/report-2"), { params: Promise.resolve({ reportId: "report-2" }) });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ status: "researching", title: "YC company research" });
+    expect(response.headers.get("Cache-Control")).toBe("private, no-store");
+    expect(mockedGetCompanyReport).toHaveBeenCalledWith("user-1", "report-2");
+  });
+
   it("does not reveal reports outside the user's scope", async () => {
     mockedGetCurrentUser.mockResolvedValue(user);
     mockedDeleteReport.mockResolvedValue(null);
@@ -57,4 +70,3 @@ describe("report DELETE routes", () => {
     expect(response.status).toBe(404);
   });
 });
-

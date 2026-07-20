@@ -10,6 +10,7 @@ import type { YcCompany } from "@/lib/types/company";
 const context: DedicatedWorkerGlobalScope = self as unknown as DedicatedWorkerGlobalScope;
 
 type Neighbor = { id: number; distance: number };
+type CompanyDirectoryResponse = { companies: YcCompany[] };
 type LocalInference = {
   score: number;
   startupFit: number;
@@ -172,7 +173,10 @@ context.onmessage = async (event: MessageEvent<{ profile: ApplicationProfile }>)
   try {
     progress("loading", 0.1, "Downloading the versioned model archive");
     const [companies, archive] = await Promise.all([
-      fetch("/data/yc-companies.json").then((response) => response.json()) as Promise<YcCompany[]>,
+      fetch("/api/yc/companies").then(async (response) => {
+        if (!response.ok) throw new Error("YC_COMPANY_DIRECTORY_UNAVAILABLE");
+        return ((await response.json()) as CompanyDirectoryResponse).companies;
+      }),
       downloadModelArchive(appConfig.modelArchiveUrl),
     ]);
     progress("vectorizing", 0.38, "Vectorizing the application and founder profile locally");

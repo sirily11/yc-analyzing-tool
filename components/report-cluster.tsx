@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { projectReportMapPoint, REPORT_MAP_COLORS, REPORT_MAP_HEIGHT, REPORT_MAP_WIDTH, selectReportMapCompanies } from "@/lib/report-map";
+import { ReportMapPointCanvas, type ReportMapCanvasPoint } from "@/components/report-map-point-canvas";
+import { projectReportMapPoint, reportMapColor, REPORT_MAP_HEIGHT, REPORT_MAP_WIDTH, type ReportMapScope } from "@/lib/report-map";
 import type { ReportDocument } from "@/lib/types/analysis";
 import type { YcCompany } from "@/lib/types/company";
 
@@ -13,19 +14,31 @@ function nodePosition(company: YcCompany, width: number, height: number) {
   return { left: offsetX + point.x * scale, top: offsetY + point.y * scale };
 }
 
-export function ReportCluster({ report, companies, selectedCompanyId, onSelect, compact = false }: { report: ReportDocument; companies: YcCompany[]; selectedCompanyId: number | null; onSelect: (company: YcCompany | null) => void; compact?: boolean }) {
+export function ReportCluster({ report, companies, scope, selectedCompanyId, onSelect }: { report: ReportDocument; companies: YcCompany[]; scope: ReportMapScope; selectedCompanyId: number | null; onSelect: (company: YcCompany | null) => void }) {
   const center = report.prediction.clusterPoint;
-  const nearest = new Set(report.prediction.nearestCompanyIds);
-  const nodes = useMemo(() => selectReportMapCompanies(companies, center, compact ? 80 : 180), [companies, compact, center.x, center.y]);
+  const nearest = useMemo(() => new Set(report.prediction.nearestCompanyIds), [report.prediction.nearestCompanyIds]);
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [mapSize, setMapSize] = useState({ width: 760, height: 430 });
   const svgRef = useRef<SVGSVGElement>(null);
   const activeId = hoveredId ?? selectedCompanyId;
-  const activeCompany = nodes.find(({ company }) => company.id === activeId)?.company ?? null;
+  const activeCompany = companies.find((company) => company.id === activeId) ?? null;
   const activePosition = activeCompany ? nodePosition(activeCompany, mapSize.width, mapSize.height) : null;
+  const canvasPoints = useMemo<ReportMapCanvasPoint[]>(() => companies.map((company) => {
+    const point = projectReportMapPoint(company);
+    const isNearest = nearest.has(company.id);
+    return {
+      id: company.id,
+      ...point,
+      radius: isNearest ? 4.8 : scope === "all" ? 1.8 : 2.4,
+      fill: reportMapColor(company.year),
+      opacity: isNearest ? .95 : scope === "all" ? .4 : .48,
+    };
+  }), [companies, nearest, scope]);
+  const keyboardCompanies = useMemo(() => companies.filter((company) => nearest.has(company.id)), [companies, nearest]);
   const id = useId().replaceAll(":", "");
   const gridId = `report-grid-${id}`;
   const glowId = `candidate-glow-${id}`;
+  useEffect(() => setHoveredId(null), [companies]);
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -43,7 +56,7 @@ export function ReportCluster({ report, companies, selectedCompanyId, onSelect, 
     const rect = svgRef.current?.getBoundingClientRect();
     if (!rect) return null;
     let best: { company: YcCompany; distance: number } | null = null;
-    for (const { company } of nodes) {
+    for (const company of companies) {
       const position = nodePosition(company, rect.width, rect.height);
       const distance = Math.hypot(rect.left + position.left - clientX, rect.top + position.top - clientY);
       if (distance <= 12 && (!best || distance < best.distance)) best = { company, distance };
@@ -61,18 +74,14 @@ export function ReportCluster({ report, companies, selectedCompanyId, onSelect, 
         onSelect(company ? selectedCompanyId === company.id ? null : company : null);
       }}
     >
-      <svg ref={svgRef} className="report-cluster-svg" viewBox="0 0 760 430" role="img" aria-label={`${report.profile.companyName} positioned among similar public YC companies. Hover or tap a company node for details.`}>
-        <defs><pattern id={gridId} width="36" height="36" patternUnits="userSpaceOnUse"><path d="M 36 0 L 0 0 0 36" fill="none" stroke="#cec6b7" strokeWidth="1" /></pattern><filter id={glowId}><feGaussianBlur stdDeviation="6" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>
+      <svg ref={svgRef} className="report-cluster-svg report-cluster-background" viewBox="0 0 760 430" role="img" aria-label={`${report.profile.companyName} positioned among ${scope === "all" ? "the live YC directory" : "its current YC comparison cluster"}. Hover or tap a company node for details.`}>
+        <defs><pattern id={gridId} width="36" height="36" patternUnits="userSpaceOnUse"><path d="M 36 0 L 0 0 0 36" fill="none" stroke="#cec6b7" strokeWidth="1" /></pattern></defs>
         <rect width="760" height="430" fill="#f3efe5" /><rect width="760" height="430" fill={`url(#${gridId})`} />
-        <text x="18" y="25" className="cluster-label">NEAREST ACCEPTED-COMPANY SPACE</text><text x="742" y="25" textAnchor="end" className="cluster-label">{report.profile.sector.toUpperCase()}</text>
-        {nodes.map(({ company }) => {
-          const active = company.id === activeId;
-          const isNearest = nearest.has(company.id);
-          const point = projectReportMapPoint(company);
-          return <g key={company.id}>
-            <circle cx={point.x} cy={point.y} r={active ? 7 : isNearest ? 4.8 : 2.4} fill={active ? "#25211d" : REPORT_MAP_COLORS[company.year] ?? "#70695f"} opacity={active ? 1 : isNearest ? .95 : .48} stroke={active ? "#f3efe5" : "none"} strokeWidth={active ? 2 : 0} />
-          </g>;
-        })}
+        <text x="18" y="25" className="cluster-label">{scope === "all" ? "ALL YC COMPANY SPACE" : "CURRENT COMPARISON CLUSTER"}</text><text x="742" y="25" textAnchor="end" className="cluster-label">{scope === "all" ? "LIVE GLOBAL DIRECTORY" : report.profile.sector.toUpperCase()}</text>
+      </svg>
+      <ReportMapPointCanvas points={canvasPoints} activeId={activeId} />
+      <svg className="report-cluster-overlay" viewBox="0 0 760 430" aria-hidden="true">
+        <defs><filter id={glowId}><feGaussianBlur stdDeviation="6" result="blur" /><feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge></filter></defs>
         {(() => {
           const point = projectReportMapPoint(center);
           return <>
@@ -84,7 +93,7 @@ export function ReportCluster({ report, companies, selectedCompanyId, onSelect, 
         })()}
       </svg>
       <div className="report-cluster-node-layer">
-        {nodes.map(({ company }) => {
+        {keyboardCompanies.map((company) => {
           const position = nodePosition(company, mapSize.width, mapSize.height);
           return <button
             key={company.id}
@@ -101,7 +110,8 @@ export function ReportCluster({ report, companies, selectedCompanyId, onSelect, 
           />;
         })}
       </div>
-      <span className="report-cluster-hint">Hover or tap a company node</span>
+      <span className="report-cluster-hint">{scope === "all" ? "Live global layout" : "Nearest-company layout"} · Hover or tap</span>
+      {companies.length === 0 && <p className="report-map-empty">No YC companies match the selected years.</p>}
       {activeCompany && activePosition && <div
           className={`report-cluster-tooltip ${activeCompany.x > .66 ? "align-left" : ""} ${activeCompany.y > .62 ? "above" : ""}`}
           style={{ left: activePosition.left, top: activePosition.top }}
