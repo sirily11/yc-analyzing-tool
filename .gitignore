@@ -18,3 +18,5 @@ ml/releases/
 public/models/
 public/data/yc-companies.json
 /.swc
+.vercel
+.env*.local

@@ -1,11 +1,17 @@
 import "server-only";
+import { createHash } from "node:crypto";
 import { z } from "zod";
+import { billingConfig } from "@/lib/billing/config";
+import { nanoUsdFromUsd, settleProviderUsage } from "@/lib/billing/repository";
+import type { MeteringContext } from "@/lib/billing/usage";
 
 const API_BASE = "https://api.firecrawl.dev/v2";
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1_000;
 
 const searchResponseSchema = z.object({
   success: z.boolean(),
+  id: z.string().optional(),
+  creditsUsed: z.number().int().nonnegative().optional(),
   data: z.object({
     web: z.array(z.object({
       title: z.string().optional(),
@@ -17,6 +23,8 @@ const searchResponseSchema = z.object({
 
 const mapResponseSchema = z.object({
   success: z.boolean(),
+  id: z.string().optional(),
+  creditsUsed: z.number().int().nonnegative().optional(),
   links: z.array(z.object({
     url: z.string().url(),
     title: z.string().optional(),
@@ -35,6 +43,7 @@ const batchStatusSchema = z.object({
     markdown: z.string().optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })).default([]),
+  creditsUsed: z.number().int().nonnegative().optional(),
 });
 const batchErrorsSchema = z.object({
   errors: z.array(z.object({
@@ -95,11 +104,37 @@ async function firecrawlRequest(pathname: string, init: RequestInit, signal?: Ab
   return response.json();
 }
 
-export async function searchFirecrawl(query: string, signal?: AbortSignal): Promise<FirecrawlSearchResult[]> {
+function stableUsageKey(value: string) {
+  return createHash("sha256").update(value).digest("hex").slice(0, 24);
+}
+
+export async function recordFirecrawlUsage(context: MeteringContext | undefined, input: { feature: string; externalId: string; creditsUsed?: number }) {
+  if (!context) return;
+  const missingPrice = billingConfig.enabled && billingConfig.firecrawlUsdPerCredit <= 0;
+  if (missingPrice) throw new Error("FIRECRAWL_USD_PER_CREDIT_REQUIRED");
+  await settleProviderUsage({
+    userId: context.userId,
+    reservationId: context.reservationId,
+    feature: input.feature,
+    provider: "firecrawl",
+    externalId: input.externalId,
+    providerCredits: input.creditsUsed ?? null,
+    costNanoUsd: nanoUsdFromUsd((input.creditsUsed ?? 0) * billingConfig.firecrawlUsdPerCredit),
+    idempotencyKey: `firecrawl:${input.externalId}:${input.feature}`,
+    needsReview: input.creditsUsed === undefined,
+  });
+}
+
+export async function searchFirecrawl(query: string, signal?: AbortSignal, metering?: MeteringContext): Promise<FirecrawlSearchResult[]> {
   const parsed = searchResponseSchema.parse(await firecrawlRequest("/search", {
     method: "POST",
     body: JSON.stringify({ query: query.slice(0, 500), limit: 3, sources: ["web"], ignoreInvalidURLs: true, timeout: 12_000 }),
   }, signal));
+  await recordFirecrawlUsage(metering, {
+    feature: "Firecrawl search",
+    externalId: parsed.id ?? `${metering?.operationId ?? "platform"}:search:${stableUsageKey(query)}`,
+    creditsUsed: parsed.creditsUsed,
+  });
   return parsed.data.web.slice(0, 3).map((result) => ({
     title: result.title?.trim() || result.url,
     description: result.description?.trim().slice(0, 1_500) || "No search description was returned.",
@@ -107,11 +142,16 @@ export async function searchFirecrawl(query: string, signal?: AbortSignal): Prom
   }));
 }
 
-export async function mapFirecrawl(url: string, signal?: AbortSignal) {
+export async function mapFirecrawl(url: string, signal?: AbortSignal, metering?: MeteringContext) {
   const parsed = mapResponseSchema.parse(await firecrawlRequest("/map", {
     method: "POST",
     body: JSON.stringify({ url, sitemap: "include", includeSubdomains: false, ignoreQueryParameters: true, limit: 25, timeout: 12_000 }),
   }, signal));
+  await recordFirecrawlUsage(metering, {
+    feature: "Firecrawl map",
+    externalId: parsed.id ?? `${metering?.operationId ?? "platform"}:map:${stableUsageKey(url)}`,
+    creditsUsed: parsed.creditsUsed,
+  });
   return parsed.links;
 }
 
@@ -155,7 +195,7 @@ async function getBatchScrapeFailures(id: string, invalidURLs: string[], signal?
   ]);
 }
 
-export async function batchScrapeFirecrawl(urls: string[], signal?: AbortSignal): Promise<FirecrawlPage[]> {
+export async function batchScrapeFirecrawl(urls: string[], signal?: AbortSignal, metering?: MeteringContext): Promise<FirecrawlPage[]> {
   if (!urls.length) return [];
   const started = batchStartSchema.parse(await firecrawlRequest("/batch/scrape", {
     method: "POST",
@@ -175,6 +215,7 @@ export async function batchScrapeFirecrawl(urls: string[], signal?: AbortSignal)
   while (Date.now() < deadline) {
     const status = batchStatusSchema.parse(await firecrawlRequest(`/batch/scrape/${encodeURIComponent(started.id)}`, { method: "GET" }, signal));
     if (status.status === "failed" || status.status === "completed") {
+      await recordFirecrawlUsage(metering, { feature: "Firecrawl scrape", externalId: started.id, creditsUsed: status.creditsUsed });
       const pages = status.data.flatMap((page) => {
         const sourceUrl = typeof page.metadata?.sourceURL === "string" ? page.metadata.sourceURL : typeof page.metadata?.url === "string" ? page.metadata.url : "";
         if (!sourceUrl || !page.markdown?.trim()) return [];

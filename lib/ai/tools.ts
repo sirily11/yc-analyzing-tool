@@ -15,6 +15,9 @@ import { fetchYcCompanyDetail } from "@/lib/yc/company-data";
 import { confirmationInputSchema, stopInputSchema, type ConfirmationAction } from "@/lib/ai/chat-source";
 import { chatToolLog, summarizeToolError } from "@/lib/ai/tool-log";
 import { startReportResearch } from "@/lib/research/report-research";
+import { billingConfig, reserveWithMargin } from "@/lib/billing/config";
+import { attachReservationScope, closeReservation, reserveCredits } from "@/lib/billing/repository";
+import { InsufficientCreditsError } from "@/lib/billing/errors";
 
 const sourceFileSchema = sourceFileMetadataSchema.extend({ kind: z.literal("pdf").optional() });
 
@@ -27,7 +30,9 @@ function companyResearchFailureResult(cause: unknown, stage: string, reportId: s
   const summary = summarizeToolError(cause);
   const scrapeErrors = cause instanceof FirecrawlScrapeError ? cause.failures.slice(0, 20) : [];
   const status = summary.errorCode.match(/:(\d{3})$/)?.[1];
-  const message = scrapeErrors.length > 0
+  const message = cause instanceof InsufficientCreditsError
+    ? `This report needs ${cause.requiredPoints.toLocaleString("en-US")} available points; ${cause.availablePoints.toLocaleString("en-US")} are available. Add points from the Credits page and try again.`
+    : scrapeErrors.length > 0
     ? `Firecrawl failed to scrape ${scrapeErrors.length} requested public page${scrapeErrors.length === 1 ? "" : "s"}. Company research stopped before synthesis.`
     : summary.errorCode === "FIRECRAWL_NOT_CONFIGURED"
       ? "Firecrawl is not configured, so public company research could not start."
@@ -50,11 +55,12 @@ function companyResearchFailureResult(cause: unknown, stage: string, reportId: s
       stage,
       retryable,
       scrapeErrors,
+      ...(cause instanceof InsufficientCreditsError ? { creditsUrl: "/credits", availablePoints: cause.availablePoints, requiredPoints: cause.requiredPoints } : {}),
     },
   };
 }
 
-export function createAnalysisTools(context: { userId: string; chatId: string; chatText: string | null; approvedActions: ReadonlySet<ConfirmationAction>; requestId: string; requestSignal?: AbortSignal }) {
+export function createAnalysisTools(context: { userId: string; chatId: string; chatText: string | null; approvedActions: ReadonlySet<ConfirmationAction>; requestId: string; requestSignal?: AbortSignal; reservationId?: string | null }) {
   const approvedActions = new Set(context.approvedActions);
   return {
     askQuestion: tool({
@@ -97,15 +103,35 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
           };
         }
 
+        const reservation = await reserveCredits({
+          userId: context.userId,
+          operationKey: `application-report:${context.userId}:${context.requestId}`,
+          feature: "Application report",
+          points: reserveWithMargin(billingConfig.applicationReservationPoints) + billingConfig.reportFeePoints,
+          reportFeePoints: billingConfig.reportFeePoints,
+        });
         const title = `${source.metadata.name.replace(/\.pdf$/i, "")} · Analysis`;
-        const reportId = await createReport({ userId: context.userId, chatId: context.chatId, sourceFile: source.metadata, sourceDocumentId: input.sourceKind === "chat" ? null : input.documentId, title, parentReportId: input.parentReportId });
+        let reportId: string;
+        try {
+          reportId = await createReport({ userId: context.userId, chatId: context.chatId, sourceFile: source.metadata, sourceDocumentId: input.sourceKind === "chat" ? null : input.documentId, title, parentReportId: input.parentReportId });
+          if (reservation) await attachReservationScope(reservation.id, context.userId, reportId);
+        } catch (cause) {
+          if (reservation) await closeReservation({ reservationId: reservation.id, userId: context.userId, success: false });
+          throw cause;
+        }
         let profile;
         try {
-          profile = await categorizeApplication(source);
+          profile = await categorizeApplication(source, {
+            userId: context.userId,
+            reservationId: reservation?.id ?? null,
+            feature: "Application categorization",
+            operationId: reportId,
+          });
         } catch (cause) {
           await failReport(reportId, context.userId, "CATEGORIZATION_FAILED").catch((failure) => {
             console.error("Failed to mark report categorization as failed", failure);
           });
+          if (reservation) await closeReservation({ reservationId: reservation.id, userId: context.userId, success: false, scopeId: reportId });
           throw cause;
         }
         return { reportId, profile, privacy: source.metadata.kind === "chat" ? "The report stores structured results; the typed brief remains part of chat history." : "The source PDF is retained in configured S3 storage for this conversation." };
@@ -122,7 +148,14 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
         const existing = await getReport(context.userId, reportId);
         if (!existing || existing.chatId !== context.chatId || existing.status !== "processing") throw new Error("REPORT_NOT_PUBLISHABLE");
         if (prediction.modelVersion !== appConfig.modelVersion || prediction.datasetVersion !== appConfig.datasetVersion) throw new Error("MODEL_VERSION_MISMATCH");
-        const research = await startReportResearch({ reportId, userId: context.userId, profile, prediction, chatText: context.chatText });
+        let research;
+        try {
+          research = await startReportResearch({ reportId, userId: context.userId, profile, prediction, chatText: context.chatText });
+        } catch (cause) {
+          const reservation = await import("@/lib/billing/repository").then(({ findOpenReservationByScope }) => findOpenReservationByScope(context.userId, reportId));
+          if (reservation) await closeReservation({ reservationId: reservation.id, userId: context.userId, success: false, scopeId: reportId });
+          throw cause;
+        }
         return { ...research, title: `${profile.companyName} · YC Fit Report`, score: prediction.score };
       },
     }),
@@ -131,7 +164,14 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
       inputSchema: companySearchInputSchema,
       execute: async (input) => {
         const [result, manifest] = await Promise.all([
-          searchYcCompanies(input),
+          searchYcCompanies(input, {
+            metering: {
+              userId: context.userId,
+              reservationId: context.reservationId ?? null,
+              feature: "Authenticated semantic search",
+              operationId: context.requestId,
+            },
+          }),
           loadYcDatasetManifest(),
         ]);
         return { datasetVersion: manifest.version, ...result };

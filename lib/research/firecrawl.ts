@@ -5,6 +5,8 @@ import { appConfig } from "@/config";
 import { getMetadataBase } from "@/lib/site-metadata";
 import type { ReportResearchTarget } from "@/lib/db/schema";
 import type { YcCompany } from "@/lib/types/company";
+import { recordFirecrawlUsage } from "@/lib/firecrawl/client";
+import type { MeteringContext } from "@/lib/billing/usage";
 import { researchErrorCode, researchLog } from "./log";
 
 const FIRECRAWL_BASE_URL = "https://api.firecrawl.dev/v2";
@@ -154,9 +156,9 @@ function isExcludedRelatedUrl(value: string) {
   return !host || excludedRelatedHosts.some((blocked) => host === blocked || host.endsWith(`.${blocked}`));
 }
 
-export async function searchComparableSources(company: YcCompany): Promise<ReportResearchTarget[]> {
+export async function searchComparableSources(company: YcCompany, metering?: MeteringContext): Promise<ReportResearchTarget[]> {
   researchLog("info", "firecrawl.search.started", { companyId: company.id, companyName: company.name });
-  const response = await firecrawlRequest<{ success: boolean; data?: { web?: FirecrawlSearchResult[] } }>("/search", {
+  const response = await firecrawlRequest<{ success: boolean; id?: string; creditsUsed?: number; data?: { web?: FirecrawlSearchResult[] } }>("/search", {
     method: "POST",
     body: JSON.stringify({
       query: `"${company.name}" product customers business model traction founders interview`,
@@ -165,6 +167,11 @@ export async function searchComparableSources(company: YcCompany): Promise<Repor
       ignoreInvalidURLs: true,
       timeout: 30_000,
     }),
+  });
+  await recordFirecrawlUsage(metering, {
+    feature: "Firecrawl comparable search",
+    externalId: response.id ?? `${metering?.operationId ?? "platform"}:comparable-search:${company.id}`,
+    creditsUsed: response.creditsUsed,
   });
   const companyHost = normalizedHost(company.website);
   const seen = new Set<string>();
@@ -272,7 +279,7 @@ function firecrawlDocument(value: unknown): FirecrawlDocument | null {
   return { markdown: row.markdown, metadata: row.metadata as FirecrawlDocument["metadata"] };
 }
 
-export async function getFirecrawlJob(kind: "crawl" | "batch-scrape", jobId: string): Promise<FirecrawlJobSnapshot> {
+export async function getFirecrawlJob(kind: "crawl" | "batch-scrape", jobId: string, metering?: MeteringContext): Promise<FirecrawlJobSnapshot> {
   researchLog("info", "firecrawl.job.poll.started", { kind, firecrawlJobId: jobId });
   const endpoint = kind === "crawl" ? `/crawl/${encodeURIComponent(jobId)}` : `/batch/scrape/${encodeURIComponent(jobId)}`;
   let next: string | null = endpoint;
@@ -301,6 +308,13 @@ export async function getFirecrawlJob(kind: "crawl" | "batch-scrape", jobId: str
     creditsUsed: Number(first?.creditsUsed ?? 0),
     documents,
   };
+  if (snapshot.status === "completed" || snapshot.status === "failed") {
+    await recordFirecrawlUsage(metering, {
+      feature: kind === "crawl" ? "Firecrawl crawl" : "Firecrawl scrape",
+      externalId: jobId,
+      creditsUsed: first?.creditsUsed,
+    });
+  }
   researchLog("info", "firecrawl.job.poll.completed", {
     kind,
     firecrawlJobId: jobId,

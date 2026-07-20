@@ -39,5 +39,8 @@ export function chatToolErrorMessage(error: unknown) {
   if (details.includes("DOCUMENT_NOT_AVAILABLE")) {
     return "The retained pitch deck is unavailable. Attach the PDF again to analyze that application.";
   }
+  if (details.includes("INSUFFICIENT_POINTS")) {
+    return "You do not have enough points for this operation. Add points from the Credits page and try again.";
+  }
   return "The requested tool could not complete. Please retry from this conversation.";
 }

@@ -7,6 +7,7 @@ import { batchScrapeFirecrawl, mapFirecrawl, searchFirecrawl, selectOfficialPage
 import { companyResearchDraftSchema, companyResearchProfileSchema, type CompanyResearchDraft, type CompanyResearchSource } from "@/lib/types/company-research";
 import type { YcCompany, YcCompanyDetail } from "@/lib/types/company";
 import { fetchYcCompanyDetail } from "@/lib/yc/company-data";
+import { gatewayProviderOptions, normalizeLanguageUsage, recordAiUsage } from "@/lib/billing/usage";
 
 const synthesisCompanySchema = companyResearchProfileSchema.omit({
   name: true,
@@ -80,13 +81,19 @@ function validateCitations(draft: CompanyResearchDraft) {
   }
 }
 
-export async function buildCompanyResearchDraft(input: { companies: YcCompany[]; request: string; requestId?: string; chatId?: string; signal?: AbortSignal; timeoutMs?: number }): Promise<CompanyResearchDraft> {
+export async function buildCompanyResearchDraft(input: { companies: YcCompany[]; request: string; requestId?: string; chatId?: string; signal?: AbortSignal; timeoutMs?: number; userId?: string; reservationId?: string; operationId?: string }): Promise<CompanyResearchDraft> {
   const deadlineSignal = AbortSignal.timeout(input.timeoutMs ?? 45_000);
   const researchSignal = input.signal ? AbortSignal.any([input.signal, deadlineSignal]) : deadlineSignal;
   const retrievedAt = new Date().toISOString();
   const warnings: string[] = [];
   const sources: CompanyResearchSource[] = [];
   const evidence: Evidence[] = [];
+  const metering = input.userId && input.operationId ? {
+    userId: input.userId,
+    reservationId: input.reservationId ?? null,
+    feature: "Company research",
+    operationId: input.operationId,
+  } : undefined;
 
   const details = await concurrentMap(input.companies, 5, async (company) => {
     try {
@@ -110,8 +117,8 @@ export async function buildCompanyResearchDraft(input: { companies: YcCompany[];
   const webResults = await concurrentMap(input.companies, 4, async (company) => {
     const query = `"${company.name}" ${officialHost(company) ?? "YC startup"} ${input.request.slice(0, 120)}`;
     const [search, mapped] = await Promise.allSettled([
-      searchFirecrawl(query, researchSignal),
-      company.website ? mapFirecrawl(company.website, researchSignal) : Promise.resolve([]),
+      searchFirecrawl(query, researchSignal, metering),
+      company.website ? mapFirecrawl(company.website, researchSignal, metering) : Promise.resolve([]),
     ]);
     if (search.status === "rejected") warnings.push(`${company.name}: Firecrawl search was unavailable.`);
     if (mapped.status === "rejected") warnings.push(`${company.name}: official-site discovery was unavailable.`);
@@ -123,7 +130,7 @@ export async function buildCompanyResearchDraft(input: { companies: YcCompany[];
   });
 
   const requestedPages = [...new Set(webResults.flatMap((result) => result.pages))];
-  const scrapedPages = await batchScrapeFirecrawl(requestedPages, researchSignal);
+  const scrapedPages = await batchScrapeFirecrawl(requestedPages, researchSignal, metering);
   const scrapedByUrl = new Map(scrapedPages.map((page) => [page.url.replace(/\/$/, ""), page]));
   let firecrawlSuccesses = 0;
 
@@ -182,14 +189,24 @@ export async function buildCompanyResearchDraft(input: { companies: YcCompany[];
 
   let output: z.infer<typeof companyResearchSynthesisSchema>;
   try {
-    ({ output } = await generateText({
+    const generation = await generateText({
       model: appConfig.analysisModel,
+      maxOutputTokens: 8_192,
       temperature: modelTemperature(appConfig.analysisModel, 0),
       abortSignal: researchSignal,
       output: Output.object({ schema: companyResearchSynthesisSchema }),
       system: `Create a conservative, citation-backed research report about the supplied public YC companies. Answer the user's requested focus. Use only the evidence objects. Every overview, product, customer, business-model, signal, comparison, opportunity, and risk statement must cite one or more exact sourceId values that support it. Never cite a failed source. Mark unknown facts instead of guessing. Do not generate a YC Fit Score, acceptance probability, admissions advice, or investment recommendation. Keep semanticText factual and compact for semantic mapping; do not include source IDs in it.`,
       prompt: synthesisPrompt,
-    }));
+      ...(input.userId ? { providerOptions: gatewayProviderOptions({ userId: input.userId, feature: "Company research synthesis" }) } : {}),
+    });
+    output = generation.output;
+    if (input.userId && input.operationId) await recordAiUsage({
+      context: { userId: input.userId, reservationId: input.reservationId ?? null, feature: "Company research synthesis", operationId: input.operationId },
+      model: appConfig.analysisModel,
+      responseId: generation.response.id,
+      providerMetadata: generation.providerMetadata,
+      usage: normalizeLanguageUsage(generation.usage),
+    });
   } catch (cause) {
     chatToolLog("error", "company_research.synthesis.failed", {
       requestId: input.requestId,

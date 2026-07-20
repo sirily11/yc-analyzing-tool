@@ -5,6 +5,7 @@ import { summarizeToolError } from "@/lib/ai/tool-log";
 import { CompanyResearchRunError, defaultCompanyResearchRequest, startCompanyResearchRun } from "@/lib/analysis/company-research-run";
 import { getReport } from "@/lib/db/repository";
 import { getYcCompaniesByIds } from "@/lib/yc/companies";
+import { InsufficientCreditsError, insufficientCreditsResponse } from "@/lib/billing/errors";
 
 const requestSchema = z.object({
   sourceReportId: z.string().uuid(),
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
     }, { status: 202, headers: { "Cache-Control": "private, no-store" } });
   } catch (runError) {
     const cause = runError instanceof CompanyResearchRunError ? runError.originalCause : runError;
+    if (cause instanceof InsufficientCreditsError) return insufficientCreditsResponse(cause);
     const summary = summarizeToolError(cause);
     console.error("Direct company report research failed", {
       sourceReportId: parsed.data.sourceReportId,

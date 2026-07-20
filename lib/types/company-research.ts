@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { companyClusterMapSchema } from "@/lib/types/company-cluster";
+
+export { companyClusterMapSchema, companyClusterPointSchema } from "@/lib/types/company-cluster";
+export type { CompanyClusterMap } from "@/lib/types/company-cluster";
 
 export const companyResearchSourceSchema = z.object({
   id: z.string().min(1).max(40),
@@ -40,27 +44,6 @@ export const companyResearchComparisonSchema = z.object({
   risks: z.array(citedInsightSchema).max(6),
 });
 
-export const companyClusterPointSchema = z.object({
-  companyId: z.number().int(),
-  x: z.number().min(0).max(1),
-  y: z.number().min(0).max(1),
-  target: z.boolean(),
-  textSource: z.enum(["firecrawl", "dataset"]),
-});
-
-export const companyClusterMapSchema = z.object({
-  mode: z.enum(["semantic", "fallback-global"]),
-  algorithm: z.literal("umap"),
-  seed: z.number().int(),
-  modelWeight: z.number().min(0).max(1),
-  webWeight: z.number().min(0).max(1),
-  embeddingModel: z.string().min(1),
-  modelVersion: z.string().min(1),
-  datasetVersion: z.string().min(1),
-  warning: z.string().max(500).nullable(),
-  points: z.array(companyClusterPointSchema).min(1).max(50),
-});
-
 export const companyResearchDraftSchema = z.object({
   kind: z.literal("company-research"),
   title: z.string().min(1).max(160),
@@ -91,4 +74,3 @@ export type CompanyResearchSource = z.infer<typeof companyResearchSourceSchema>;
 export type CompanyResearchDraft = z.infer<typeof companyResearchDraftSchema>;
 export type CompanyResearchReportDocument = z.infer<typeof companyResearchReportDocumentSchema>;
 export type CompanyResearchMapInput = z.infer<typeof companyResearchMapInputSchema>;
-export type CompanyClusterMap = z.infer<typeof companyClusterMapSchema>;
