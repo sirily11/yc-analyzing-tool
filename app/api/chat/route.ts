@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { createUIMessageStream, createUIMessageStreamResponse, convertToModelMessages, hasToolCall, streamText, type UIMessage, validateUIMessages } from "ai";
-import { appConfig, hasGatewayConfig, modelTemperature } from "@/config";
+import { appConfig, modelTemperature } from "@/config";
 import { getCurrentUser } from "@/lib/auth";
 import { generateChatTitle } from "@/lib/ai/chat-title";
 import { chatToolErrorMessage } from "@/lib/ai/chat-error";
@@ -20,7 +20,6 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   const user = await getCurrentUser();
   if (!user) return Response.json({ error: "Authentication required" }, { status: 401 });
-  if (!hasGatewayConfig) return Response.json({ error: "AI Gateway is not configured" }, { status: 503 });
   const body = await request.json() as { id: string; messages: UIMessage[] };
   const chat = await getChat(user.id, body.id);
   if (!chat) return Response.json({ error: "Chat not found" }, { status: 404 });
