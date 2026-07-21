@@ -1,7 +1,7 @@
 import "server-only";
 import { appConfig } from "@/config";
 import type { ApplicationProfile, ComparableResearchSource, GeneratedReportDraft, PredictionResult, ReportDocument } from "@/lib/types/analysis";
-import type { YcCompany } from "@/lib/types/company";
+import type { YcCompany, YcCompanyDatasetEvidence } from "@/lib/types/company";
 
 const disclaimer = "Application Signal is independent and is not affiliated with Y Combinator. This fit score compares public company patterns; it is not an acceptance probability, admissions advice, or an investment recommendation.";
 
@@ -11,10 +11,12 @@ type ReportBuildOptions = {
   researchWarnings?: string[];
   researchStatus?: "complete" | "partial" | "unavailable";
   draftModel?: string;
+  datasetEvidence?: YcCompanyDatasetEvidence[];
 };
 
-function deterministicDraft(profile: ApplicationProfile, prediction: PredictionResult, companies: YcCompany[]): GeneratedReportDraft {
+function deterministicDraft(profile: ApplicationProfile, prediction: PredictionResult, companies: YcCompany[], datasetEvidence: YcCompanyDatasetEvidence[] = []): GeneratedReportDraft {
   const lookup = new Map(companies.map((company) => [company.id, company]));
+  const evidenceById = new Map(datasetEvidence.map((item) => [item.companyId, item]));
   const nearest = prediction.nearestCompanyIds.slice(0, appConfig.reportResearch.comparableCompanyLimit).flatMap((id) => {
     const company = lookup.get(id);
     return company ? [company] : [];
@@ -39,31 +41,43 @@ function deterministicDraft(profile: ApplicationProfile, prediction: PredictionR
       founders: components.founderFit === null ? "Founder evidence was insufficient for founder-aware scoring. Add concrete, job-relevant proof of domain access and building ability." : `The evidenced founder profile contributes ${Math.round(components.founderWeight * 100)}% of the fit score; make the causal founder advantage explicit.`,
       readiness: missing.length ? `The main readiness constraint is missing evidence for ${missing.join(", ")}.` : "Core fields are present; improve specificity, compression, and proof density.",
     },
-    comparisonMatrix: nearest.map((company) => ({
-      companyId: company.id,
-      companyName: company.name,
-      product: company.oneLiner,
-      customer: company.targetMarket,
-      businessModel: "Not established in the public dataset",
-      traction: "Requires current public research",
-      founders: "Requires current public research",
-      similarity: `Model-selected neighbor in ${company.industry} / ${company.subindustry}.`,
-      difference: `The public dataset does not establish how ${company.name}'s execution differs from this application.`,
-      lesson: "Use the comparable as a positioning reference, not as evidence of likely acceptance.",
-      sourceIds: [`yc-${company.id}`],
-    })),
-    companyDeepDives: nearest.map((company) => ({
-      companyId: company.id,
-      companyName: company.name,
-      overview: company.oneLiner,
-      websiteAnalysis: "External website research was unavailable for this draft.",
-      founderAnalysis: "Public professional founder evidence was unavailable for this draft.",
-      tractionAnalysis: "Current public traction evidence was unavailable for this draft.",
-      similarities: [`Both occupy the broader ${company.industry} accepted-company space.`],
-      differences: ["Detailed execution differences require verified public sources."],
-      lessons: ["State the customer problem and differentiated execution more specifically than a directory one-liner."],
-      sourceIds: [`yc-${company.id}`],
-    })),
+    comparisonMatrix: nearest.map((company) => {
+      const evidence = evidenceById.get(company.id);
+      const description = evidence?.longDescription || company.oneLiner;
+      return {
+        companyId: company.id,
+        companyName: company.name,
+        product: description,
+        customer: company.targetMarket,
+        businessModel: evidence?.tags.length
+          ? `YC directory tags: ${evidence.tags.slice(0, 5).join(", ")}. The stored record does not specify pricing or revenue model.`
+          : "The stored YC record does not specify pricing or revenue model.",
+        traction: company.hiring
+          ? "The stored YC record marks the company as hiring; it does not include traction metrics."
+          : "The stored YC record does not include traction metrics.",
+        founders: "The stored YC record does not include founder biographies.",
+        similarity: `Model-selected neighbor in ${company.industry} / ${company.subindustry}.`,
+        difference: `The stored YC description positions ${company.name} as ${description}; execution-level differences require external evidence.`,
+        lesson: `Use ${company.name}'s public positioning as a reference, while validating business-model and traction differences separately.`,
+        sourceIds: [`yc-${company.id}`],
+      };
+    }),
+    companyDeepDives: nearest.map((company) => {
+      const evidence = evidenceById.get(company.id);
+      const description = evidence?.longDescription || company.oneLiner;
+      return {
+        companyId: company.id,
+        companyName: company.name,
+        overview: description,
+        websiteAnalysis: `External website research was unavailable. The stored YC directory describes the company as: ${description}`,
+        founderAnalysis: "The stored YC directory record does not include founder biographies, so founder comparison remains unknown.",
+        tractionAnalysis: company.hiring ? "The stored YC directory marks the company as hiring, but contains no verified traction metrics." : "The stored YC directory contains no verified traction metrics.",
+        similarities: [`Both occupy the broader ${company.industry} accepted-company space.`],
+        differences: ["Detailed execution differences require verified public sources."],
+        lessons: [`Compare the application against ${company.name}'s stored product and customer positioning, not against unsupported execution claims.`],
+        sourceIds: [`yc-${company.id}`],
+      };
+    }),
     strengths: [
       profile.aiLinked ? "The product has a clear AI or machine-learning linkage." : "The product is not dependent on an undifferentiated AI claim.",
       profile.targetCustomer !== "Not clearly specified" ? `The target customer is identifiable as ${profile.targetCustomer}.` : "The product can be evaluated against a defined customer cluster.",
@@ -106,7 +120,7 @@ export function buildReportDocument(profile: ApplicationProfile, prediction: Pre
     accessedAt: new Date().toISOString(),
   }));
   const researchSources = [...(options.researchSources ?? []), ...ycSources.filter((source) => !(options.researchSources ?? []).some((existing) => existing.companyId === source.companyId && existing.sourceType === "yc-profile"))];
-  const baseDraft = options.draft ?? deterministicDraft(profile, prediction, companies);
+  const baseDraft = options.draft ?? deterministicDraft(profile, prediction, companies, options.datasetEvidence);
   const draft = options.draft ? baseDraft : {
     ...baseDraft,
     comparisonMatrix: baseDraft.comparisonMatrix.map((row) => ({ ...row, sourceIds: [researchSources.find((source) => source.companyId === row.companyId)?.id ?? `yc-${row.companyId}`] })),

@@ -6,6 +6,7 @@ vi.mock("server-only", () => ({}));
 import {
   clearYcEmbeddingCache,
   companySearchInputSchema,
+  getYcCompanyDatasetEvidenceByIds,
   getYcCompaniesByIds,
   loadYcCompanies,
   resolveExactYcCompanies,
@@ -188,6 +189,18 @@ describe("YC company database search", () => {
     await expect(getYcCompaniesByIds([2, 1, 2], { executor })).resolves.toEqual([two, one]);
     expect(() => resolveExactYcCompanies([one, two], [3])).toThrow("YC_COMPANY_NOT_FOUND");
     expect(() => resolveExactYcCompanies([one, two], Array.from({ length: 11 }, (_, index) => index + 1))).toThrow();
+  });
+
+  it("loads report fallback evidence from the stored YC dataset in request order", async () => {
+    const { execute, executor } = mockExecutor(result([
+      { id: 1, long_description: "One builds developer tooling.", tags: JSON.stringify(["Developer Tools", "SaaS"]) },
+      { id: 2, long_description: "Two automates finance operations.", tags: JSON.stringify(["Fintech"]) },
+    ]));
+    await expect(getYcCompanyDatasetEvidenceByIds([2, 1, 2], { executor })).resolves.toEqual([
+      { companyId: 2, longDescription: "Two automates finance operations.", tags: ["Fintech"] },
+      { companyId: 1, longDescription: "One builds developer tooling.", tags: ["Developer Tools", "SaaS"] },
+    ]);
+    expect((execute.mock.calls[0][0] as { sql: string }).sql).toContain("SELECT id, long_description, tags FROM yc_companies");
   });
 
   it("accepts every dataset year from 2020 through the current UTC year", () => {

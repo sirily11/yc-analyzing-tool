@@ -18,6 +18,12 @@ export type YcCompany = {
   y: number;
 };
 
+export type YcCompanyDatasetEvidence = {
+  companyId: number;
+  longDescription: string;
+  tags: string[];
+};
+
 export type DatasetManifest = {
   version: string;
   source: string;
