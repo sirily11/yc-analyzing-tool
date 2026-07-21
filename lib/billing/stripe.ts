@@ -35,9 +35,15 @@ function siteUrl() {
 
 async function customerForUser(user: AppUser) {
   const account = await getBillingAccount(user.id);
-  if (account.stripeCustomerId) return account.stripeCustomerId;
+  const email = user.email?.trim() || undefined;
+  if (account.stripeCustomerId) {
+    // Keep the Stripe Customer's email in sync so Checkout pre-fills it even when
+    // the customer was first created before an email was available.
+    if (email) await stripe().customers.update(account.stripeCustomerId, { email });
+    return account.stripeCustomerId;
+  }
   const customer = await stripe().customers.create({
-    email: user.email || undefined,
+    email,
     name: user.name,
     metadata: { applicationUserId: user.id },
   }, { idempotencyKey: `billing-customer:${user.id}` });
@@ -56,6 +62,7 @@ export async function createTopupCheckout(user: AppUser, packId: string) {
   const session = await stripe().checkout.sessions.create({
     mode: "payment",
     customer,
+    allow_promotion_codes: true,
     client_reference_id: topupId,
     success_url: `${origin}/credits?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${origin}/credits?checkout=cancelled`,
