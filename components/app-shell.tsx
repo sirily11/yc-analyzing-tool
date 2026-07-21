@@ -16,7 +16,7 @@ export function AppSidebar({ user, chats, availablePoints }: { user: AppUser; ch
         <Link href="/dashboard#reports"><Radar size={15} /> Reports</Link>
         <Link href="/credits" className="credits-nav-link"><Coins size={15} /> Credits <strong>{availablePoints.toLocaleString("en-US")}</strong></Link>
       </nav>
-      <div className="sidebar-section"><div className="sidebar-heading"><span>Conversations</span><Link href="/chat/new" aria-label="New analysis"><FilePlus2 size={14} /></Link></div><ChatHistory chats={chats.slice(0, 8).map(({ id, title }) => ({ id, title }))} /></div>
+      <div className="sidebar-section"><div className="sidebar-heading"><span>Conversations</span><Link href="/chat/new" aria-label="New analysis"><FilePlus2 size={14} /></Link></div><ChatHistory chats={chats.slice(0, 8).map(({ id, title, updatedAt }) => ({ id, title, updatedAt }))} /></div>
       <div className="user-block"><span className="user-avatar">{user.name.slice(0, 1).toUpperCase()}</span><span><strong>{user.name}</strong><small>{user.isDevelopmentBypass ? "Local development" : user.email}</small></span><form action={leave}><button aria-label="Sign out"><LogOut size={14} /></button></form></div>
     </aside>
   );

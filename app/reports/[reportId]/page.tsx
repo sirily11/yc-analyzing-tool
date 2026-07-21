@@ -6,6 +6,7 @@ import { ReportMapExplorer } from "@/components/report-map-explorer";
 import { ReportResearchProgress } from "@/components/report-research-progress";
 import { requirePageUser } from "@/lib/auth";
 import { getReport } from "@/lib/db/repository";
+import { reportResearchProgress } from "@/lib/research/report-research";
 import { createPageMetadata } from "@/lib/site-metadata";
 import type { ComparableResearchSource } from "@/lib/types/analysis";
 import { loadYcCompanies } from "@/lib/yc/companies";
@@ -31,7 +32,9 @@ export default async function ReportPage({ params }: ReportPageProps) {
   const reportRow = await getReport(user.id, reportId);
   if (!reportRow) notFound();
   if (reportRow.status !== "complete" || !reportRow.document) {
-    return <ReportResearchProgress reportId={reportId} companyName={reportRow.profile?.companyName ?? reportRow.sourceFile.name.replace(/\.pdf$/i, "")} initialStatus={reportRow.status} />;
+    const progress = await reportResearchProgress(user.id, reportId);
+    if (!progress) notFound();
+    return <ReportResearchProgress reportId={reportId} companyName={reportRow.profile?.companyName ?? reportRow.sourceFile.name.replace(/\.pdf$/i, "")} initialProgress={{ status: progress.status, jobs: progress.jobs }} />;
   }
   const report = reportRow.document;
   const dossier = report.schemaVersion === 2 ? report.dossier : undefined;

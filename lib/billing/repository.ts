@@ -214,9 +214,25 @@ export async function settleProviderUsage(input: {
       eq(creditReservations.id, reservationId),
       eq(creditReservations.userId, userId),
     )).limit(1))[0];
-    // A reservation already parked for review (or closed) must not fail later steps of the
-    // same run — record the usage for manual reconciliation instead of throwing.
-    if (!reservation || reservation.status !== "open") return insertPlatformUsage({ ...input, status: "needs_review" }, tx);
+    // A reservation already parked for review (or closed) must not fail later
+    // steps of the same run. Preserve an existing pending user event for manual
+    // reconciliation; otherwise record the late usage at platform scope.
+    if (!reservation || reservation.status !== "open") {
+      if (existing?.status === "pending") {
+        return (await tx.update(usageEvents).set({
+          provider: input.provider,
+          model: input.model ?? existing.model,
+          externalId: input.externalId ?? existing.externalId,
+          usage: input.usage ?? existing.usage,
+          providerCredits: input.providerCredits ?? existing.providerCredits,
+          costNanoUsd: input.costNanoUsd,
+          chargedPoints: 0,
+          status: "needs_review",
+          settledAt: null,
+        }).where(eq(usageEvents.id, existing.id)).returning())[0] ?? existing;
+      }
+      return insertPlatformUsage({ ...input, status: "needs_review" }, tx);
+    }
     const account = (await tx.select().from(billingAccounts).where(eq(billingAccounts.userId, userId)).limit(1))[0];
     if (!account) throw new Error("BILLING_ACCOUNT_NOT_FOUND");
     if (input.needsReview) {

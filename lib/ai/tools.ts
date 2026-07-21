@@ -14,7 +14,7 @@ import { companySearchInputSchema, getYcCompaniesByIds, loadYcDatasetManifest, s
 import { fetchYcCompanyDetail } from "@/lib/yc/company-data";
 import { confirmationInputSchema, stopInputSchema, type ConfirmationAction } from "@/lib/ai/chat-source";
 import { chatToolLog, summarizeToolError } from "@/lib/ai/tool-log";
-import { startReportResearch } from "@/lib/research/report-research";
+import { startApplicationReportResearchRun } from "@/lib/research/report-research-run";
 import { billingConfig, reserveWithMargin } from "@/lib/billing/config";
 import { attachReservationScope, closeReservation, reserveCredits } from "@/lib/billing/repository";
 import { InsufficientCreditsError } from "@/lib/billing/errors";
@@ -150,7 +150,7 @@ export function createAnalysisTools(context: { userId: string; chatId: string; c
         if (prediction.modelVersion !== appConfig.modelVersion || prediction.datasetVersion !== appConfig.datasetVersion) throw new Error("MODEL_VERSION_MISMATCH");
         let research;
         try {
-          research = await startReportResearch({ reportId, userId: context.userId, profile, prediction, chatText: context.chatText });
+          research = await startApplicationReportResearchRun({ reportId, userId: context.userId, profile, prediction });
         } catch (cause) {
           const reservation = await import("@/lib/billing/repository").then(({ findOpenReservationByScope }) => findOpenReservationByScope(context.userId, reportId));
           if (reservation) await closeReservation({ reservationId: reservation.id, userId: context.userId, success: false, scopeId: reportId });

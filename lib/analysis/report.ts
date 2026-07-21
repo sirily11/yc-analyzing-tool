@@ -22,6 +22,7 @@ function deterministicDraft(profile: ApplicationProfile, prediction: PredictionR
   const components = prediction.scoreComponents;
   const missing = [...new Set([...profile.missingFields, ...(components.founderFit === null ? profile.founderProfile.missingFields : [])])];
   return {
+    title: `${profile.companyName} — ${profile.sector} for ${profile.targetCustomer}`.slice(0, 120),
     executiveNarrative: `The company is most credible where its ${profile.sector.toLowerCase()} positioning, target customer, and demonstrated execution reinforce one another. The next draft should replace broad claims with compact, verifiable evidence.`,
     scoreInterpretation: `The ${prediction.band.toLowerCase()} result reflects similarity to accepted-company patterns, with ${prediction.coverage} evidence coverage. It is a fit signal rather than an acceptance probability.`,
     candidateEvidence: [
@@ -113,7 +114,7 @@ export function buildReportDocument(profile: ApplicationProfile, prediction: Pre
   };
   return {
     schemaVersion: 2,
-    title: `${profile.companyName} · YC Fit Report`,
+    title: draft.title,
     executiveSummary: `${profile.companyName} lands in the ${prediction.band.toLowerCase()} range at ${Math.round(prediction.score)}/100. ${draft.executiveNarrative}`,
     profile,
     prediction,

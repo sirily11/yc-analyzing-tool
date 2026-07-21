@@ -2,14 +2,14 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import { appConfig, hasFirecrawlConfig } from "@/config";
-import { collectChatAnalysisTextForReport } from "@/lib/ai/chat-source";
+import { collectChatAnalysisText, collectChatAnalysisTextForReport } from "@/lib/ai/chat-source";
 import { draftResearchReport, type ResearchMaterial } from "@/lib/analysis/report-draft";
 import { buildReportDocument } from "@/lib/analysis/report";
 import {
   addReportResearchJobs,
-  beginReportResearch,
   claimReportDrafting,
   completeReport,
+  failRunningReportResearchJobs,
   getReadyChatDocument,
   getReport,
   getReportById,
@@ -17,16 +17,22 @@ import {
   listReportResearchJobs,
   loadMessages,
   markReportResearchJob,
+  recordExpiredReportResearchJobUsage,
   reclaimStaleReportDrafting,
   touchReportResearchJob,
 } from "@/lib/db/repository";
 import type { ReportResearchTarget } from "@/lib/db/schema";
 import { readRetainedDocument } from "@/lib/storage/chat-documents";
-import type { ApplicationProfile, ComparableResearchSource, ExtractedPdf, PredictionResult } from "@/lib/types/analysis";
+import type { ComparableResearchSource, ExtractedPdf, PredictionResult } from "@/lib/types/analysis";
 import type { YcCompany } from "@/lib/types/company";
 import { loadYcCompanies } from "@/lib/yc/companies";
 import {
   getFirecrawlJob,
+  FirecrawlLaunchAmbiguousError,
+  FirecrawlUsagePersistenceError,
+  hasFirecrawlWebhookConfig,
+  markComparableSearchUsageForReview,
+  prepareComparableSearchUsage,
   publicHttpsUrl,
   searchComparableSources,
   startRelatedBatch,
@@ -53,7 +59,7 @@ async function reportMetering(reportId: string, userId?: string): Promise<Meteri
 
 function selectedCompanies(prediction: PredictionResult, companies: YcCompany[]) {
   const lookup = new Map(companies.map((company) => [company.id, company]));
-  return prediction.nearestCompanyIds.slice(0, appConfig.reportResearch.comparableCompanyLimit).flatMap((id) => {
+  return [...new Set(prediction.nearestCompanyIds)].slice(0, appConfig.reportResearch.comparableCompanyLimit).flatMap((id) => {
     const company = lookup.get(id);
     return company ? [company] : [];
   });
@@ -67,72 +73,91 @@ function ycTarget(company: YcCompany): ReportResearchTarget {
   };
 }
 
-export async function startReportResearch(input: {
+export type PreparedReportResearchJobs = {
   reportId: string;
-  userId: string;
-  profile: ApplicationProfile;
-  prediction: PredictionResult;
-  chatText?: string | null;
-}) {
-  researchLog("info", "report.research.started", { reportId: input.reportId });
-  const begun = await beginReportResearch({ id: input.reportId, userId: input.userId, profile: input.profile, prediction: input.prediction });
-  if (!begun) throw new Error("REPORT_NOT_RESEARCHABLE");
-  const metering = await reportMetering(input.reportId, input.userId);
-  if (!hasFirecrawlConfig) {
-    researchLog("warn", "report.research.fallback", { reportId: input.reportId, reason: "FIRECRAWL_NOT_CONFIGURED" });
-    await finalizeReportResearch(input.reportId, { force: true, chatText: input.chatText });
-    return { reportId: input.reportId, href: `/reports/${input.reportId}`, status: "complete" as const, researchedCompanies: 0 };
+  existingJobCount: number;
+  providerConfigured: boolean;
+  companies: YcCompany[];
+  metering: MeteringContext | null;
+};
+
+export async function prepareReportResearchJobs(reportId: string): Promise<PreparedReportResearchJobs> {
+  const report = await getReportById(reportId);
+  if (!report || report.status !== "researching" || !report.profile || !report.prediction) throw new Error("REPORT_NOT_RESEARCHABLE");
+  const existingJobs = await listReportResearchJobs(reportId);
+  if (existingJobs.length) {
+    researchLog("info", "report.research.jobs_reused", { reportId, jobCount: existingJobs.length });
+    return { reportId, existingJobCount: existingJobs.length, providerConfigured: hasFirecrawlConfig, companies: [], metering: null };
   }
 
-  const companies = selectedCompanies(input.prediction, await loadYcCompanies());
-  researchLog("info", "report.research.comparables.selected", { reportId: input.reportId, companyCount: companies.length });
-  const started = await Promise.all(companies.map(async (company) => {
+  const providerConfigured = hasFirecrawlConfig && hasFirecrawlWebhookConfig();
+  if (!providerConfigured) {
+    researchLog("warn", "report.research.fallback", { reportId, reason: hasFirecrawlConfig ? "FIRECRAWL_DURABLE_WEBHOOK_NOT_CONFIGURED" : "FIRECRAWL_NOT_CONFIGURED" });
+    return { reportId, existingJobCount: 0, providerConfigured: false, companies: [], metering: null };
+  }
+
+  const companies = selectedCompanies(report.prediction, await loadYcCompanies());
+  const metering = await reportMetering(reportId, report.userId) ?? null;
+  await prepareComparableSearchUsage(companies, metering ?? undefined);
+  researchLog("info", "report.research.comparables.selected", { reportId, companyCount: companies.length });
+  return { reportId, existingJobCount: 0, providerConfigured: true, companies, metering };
+}
+
+export async function markPendingComparableSearchUsageForReview(reportId: string, prediction: PredictionResult) {
+  const companyIds = [...new Set(prediction.nearestCompanyIds)].slice(0, appConfig.reportResearch.comparableCompanyLimit);
+  await markComparableSearchUsageForReview(companyIds, await reportMetering(reportId));
+}
+
+export async function startReportResearchJobs(prepared: PreparedReportResearchJobs) {
+  const { reportId } = prepared;
+  if (prepared.existingJobCount || !prepared.providerConfigured) return { reportId, jobCount: prepared.existingJobCount };
+
+  researchLog("info", "report.research.started", { reportId });
+  const started = await Promise.all(prepared.companies.map(async (company) => {
     const [crawl, search] = await Promise.allSettled([
-      startWebsiteCrawl(input.reportId, company),
-      searchComparableSources(company, metering),
+      startWebsiteCrawl(reportId, company),
+      searchComparableSources(company, prepared.metering ?? undefined),
     ]);
-    if (crawl.status === "rejected") researchLog("warn", "report.research.crawl.start_failed", { reportId: input.reportId, companyId: company.id, failureCode: researchErrorCode(crawl.reason) });
-    if (search.status === "rejected") researchLog("warn", "report.research.search.failed", { reportId: input.reportId, companyId: company.id, failureCode: researchErrorCode(search.reason) });
+    if (crawl.status === "rejected") researchLog("warn", "report.research.crawl.start_failed", { reportId, companyId: company.id, failureCode: researchErrorCode(crawl.reason) });
+    if (search.status === "rejected") researchLog("warn", "report.research.search.failed", { reportId, companyId: company.id, failureCode: researchErrorCode(search.reason) });
+    if (crawl.status === "rejected" && crawl.reason instanceof FirecrawlLaunchAmbiguousError) throw crawl.reason;
+    if (search.status === "rejected" && search.reason instanceof FirecrawlUsagePersistenceError) throw search.reason;
+    if (crawl.status === "fulfilled" && crawl.value) {
+      await addReportResearchJobs([{
+        reportId,
+        kind: "crawl",
+        comparableCompanyId: company.id,
+        firecrawlJobId: crawl.value.firecrawlJobId,
+        targets: [crawl.value.target],
+      }]);
+    }
     return {
       company,
-      crawl: crawl.status === "fulfilled" ? crawl.value : null,
       related: search.status === "fulfilled" ? search.value : [],
     };
   }));
 
-  const jobs: Parameters<typeof addReportResearchJobs>[0] = [];
   const relatedTargets: ReportResearchTarget[] = [];
   for (const item of started) {
     relatedTargets.push(ycTarget(item.company), ...item.related);
-    if (item.crawl) jobs.push({
-      reportId: input.reportId,
-      kind: "crawl",
-      comparableCompanyId: item.company.id,
-      firecrawlJobId: item.crawl.firecrawlJobId,
-      targets: [item.crawl.target],
-    });
   }
+  let batch = null;
   try {
-    const batch = await startRelatedBatch(input.reportId, relatedTargets);
-    if (batch) jobs.push({
-      reportId: input.reportId,
-      kind: "batch-scrape",
-      firecrawlJobId: batch.firecrawlJobId,
-      targets: batch.targets,
-    });
+    batch = await startRelatedBatch(reportId, relatedTargets);
   } catch (cause) {
+    if (cause instanceof FirecrawlLaunchAmbiguousError) throw cause;
     // Website crawls can still produce a useful partial report.
-    researchLog("warn", "report.research.batch.start_failed", { reportId: input.reportId, failureCode: researchErrorCode(cause) });
+    researchLog("warn", "report.research.batch.start_failed", { reportId, failureCode: researchErrorCode(cause) });
   }
-  await addReportResearchJobs(jobs);
-  researchLog("info", "report.research.jobs.persisted", { reportId: input.reportId, jobCount: jobs.length, relatedTargetCount: relatedTargets.length });
-  if (!jobs.length) await finalizeReportResearch(input.reportId, { force: true, chatText: input.chatText });
-  return {
-    reportId: input.reportId,
-    href: `/reports/${input.reportId}`,
-    status: jobs.length ? "researching" as const : "complete" as const,
-    researchedCompanies: companies.length,
-  };
+  if (batch) await addReportResearchJobs([{
+    reportId,
+    kind: "batch-scrape",
+    firecrawlJobId: batch.firecrawlJobId,
+    targets: batch.targets,
+  }]);
+  const jobs = await listReportResearchJobs(reportId);
+  researchLog("info", "report.research.jobs.persisted", { reportId, jobCount: jobs.length, relatedTargetCount: relatedTargets.length });
+  return { reportId, jobCount: jobs.length };
 }
 
 function normalizedUrl(value: string | undefined) {
@@ -211,7 +236,8 @@ async function candidateSource(report: NonNullable<Awaited<ReturnType<typeof get
   }
   let text = chatText?.trim() || "";
   if (!text && report.sourceFile.kind === "chat") {
-    text = collectChatAnalysisTextForReport(await loadMessages(report.userId, report.chatId), report.id) ?? "";
+    const messages = await loadMessages(report.userId, report.chatId);
+    text = collectChatAnalysisTextForReport(messages, report.id) ?? collectChatAnalysisText(messages) ?? "";
   }
   if (!text) text = report.profile?.summary ?? "The approved source could not be reconstructed.";
   return {
@@ -227,9 +253,27 @@ function researchCoverage(companies: YcCompany[], sources: ComparableResearchSou
   return companies.every((company) => covered.has(company.id)) ? "complete" as const : "partial" as const;
 }
 
-export async function finalizeReportResearch(reportId: string, options: { force?: boolean; chatText?: string | null } = {}) {
+export async function settleCompletedReportResearch(reportId: string) {
+  const report = await getReportById(reportId);
+  if (!report || report.status !== "complete") return false;
+  const reservation = await findOpenReservationByScope(report.userId, reportId);
+  if (reservation) await closeReservation({
+    reservationId: reservation.id,
+    userId: report.userId,
+    success: true,
+    scopeId: reportId,
+    chargeReportFee: true,
+  });
+  return true;
+}
+
+export async function finalizeReportResearch(reportId: string, options: { force?: boolean; chatText?: string | null; settleReservation?: boolean } = {}) {
   const current = await getReportById(reportId);
-  if (!current || current.status === "complete" || current.status === "failed") return current?.status === "complete";
+  if (!current || current.status === "failed") return false;
+  if (current.status === "complete") {
+    if (options.settleReservation !== false) await settleCompletedReportResearch(reportId);
+    return true;
+  }
   const jobs = await listReportResearchJobs(reportId);
   const deadlinePassed = Boolean(current.researchDeadlineAt && current.researchDeadlineAt.getTime() <= Date.now());
   let claimed;
@@ -283,14 +327,9 @@ export async function finalizeReportResearch(reportId: string, options: { force?
     researchStatus: coverage,
     draftModel: appConfig.reportModel,
   });
-  await completeReport({ id: claimed.id, userId: claimed.userId, profile: claimed.profile, prediction: claimed.prediction, document });
-  if (metering?.reservationId) await closeReservation({
-    reservationId: metering.reservationId,
-    userId: claimed.userId,
-    success: true,
-    scopeId: claimed.id,
-    chargeReportFee: true,
-  });
+  const completed = await completeReport({ id: claimed.id, userId: claimed.userId, profile: claimed.profile, prediction: claimed.prediction, document });
+  if (!completed && (await getReportById(reportId))?.status !== "complete") return false;
+  if (options.settleReservation !== false) await settleCompletedReportResearch(reportId);
   researchLog("info", "report.drafting.completed", { reportId, researchCoverage: coverage, sourceCount: research.sources.length, warningCount: research.warnings.length, usedModelDraft: Boolean(draft) });
   return true;
 }
@@ -320,21 +359,45 @@ async function refreshRunningJob(job: Awaited<ReturnType<typeof listReportResear
   }
 }
 
-export async function reconcileReportResearch(userId: string, reportId: string) {
-  const report = await getReport(userId, reportId);
+async function refreshReportResearchJobs(reportId: string) {
+  const jobs = await listReportResearchJobs(reportId);
+  const stale = jobs.filter((job) => job.status === "running" && (!job.lastCheckedAt || Date.now() - job.lastCheckedAt.getTime() >= statusPollIntervalMs));
+  researchLog("info", "report.research.reconcile", { reportId, runningJobCount: jobs.filter((job) => job.status === "running").length, pollCount: stale.length });
+  await Promise.all(stale.map(refreshRunningJob));
+  return listReportResearchJobs(reportId);
+}
+
+export async function pollReportResearchJobs(reportId: string) {
+  const report = await getReportById(reportId);
   if (!report) return null;
-  if (report.status === "researching") {
-    const jobs = await listReportResearchJobs(reportId);
-    const stale = jobs.filter((job) => job.status === "running" && (!job.lastCheckedAt || Date.now() - job.lastCheckedAt.getTime() >= statusPollIntervalMs));
-    researchLog("info", "report.research.reconcile", { reportId, runningJobCount: jobs.filter((job) => job.status === "running").length, pollCount: stale.length });
-    await Promise.all(stale.map(refreshRunningJob));
-    const refreshed = await listReportResearchJobs(reportId);
-    const deadlinePassed = Boolean(report.researchDeadlineAt && report.researchDeadlineAt.getTime() <= Date.now());
-    if (deadlinePassed || (refreshed.length > 0 && refreshed.every((job) => job.status !== "running"))) await finalizeReportResearch(reportId, { force: deadlinePassed });
-  } else if (report.status === "drafting" && Date.now() - report.updatedAt.getTime() >= 2 * 60 * 1_000) {
-    await finalizeReportResearch(reportId, { force: true });
+  if (report.status !== "researching") {
+    return { reportId, status: report.status, readyToDraft: report.status === "drafting" || report.status === "complete", deadlinePassed: false };
   }
-  return reportResearchProgress(userId, reportId);
+
+  const refreshed = await refreshReportResearchJobs(reportId);
+  const deadlinePassed = Boolean(report.researchDeadlineAt && report.researchDeadlineAt.getTime() <= Date.now());
+  return {
+    reportId,
+    status: report.status,
+    readyToDraft: deadlinePassed || refreshed.length === 0 || refreshed.every((job) => job.status !== "running"),
+    deadlinePassed,
+  };
+}
+
+export async function pollOutstandingReportResearchJobs(reportId: string) {
+  const jobs = await refreshReportResearchJobs(reportId);
+  return {
+    reportId,
+    running: jobs.filter((job) => job.status === "running").length,
+    complete: jobs.filter((job) => job.status === "complete").length,
+    failed: jobs.filter((job) => job.status === "failed").length,
+  };
+}
+
+export async function expireOutstandingReportResearchJobs(reportId: string) {
+  const failed = await failRunningReportResearchJobs(reportId, "RESEARCH_CLEANUP_DEADLINE_EXCEEDED");
+  if (failed.length) researchLog("warn", "report.research.cleanup_deadline_reached", { reportId, failedJobCount: failed.length });
+  return failed.length;
 }
 
 export async function reportResearchProgress(userId: string, reportId: string) {
@@ -355,39 +418,86 @@ export async function reportResearchProgress(userId: string, reportId: string) {
   };
 }
 
-export async function handleFirecrawlCompletion(input: { jobId: string; type: string; error?: string }) {
+async function finishReportAfterTerminalResearchJobs(reportId: string) {
+  const [jobs, report] = await Promise.all([
+    listReportResearchJobs(reportId),
+    getReportById(reportId),
+  ]);
+  if (!report || jobs.some((item) => item.status === "running")) return;
+  if (report.status === "complete") {
+    await settleCompletedReportResearch(reportId);
+    return;
+  }
+  // Reports created before the Workflow migration have no run marker. Keep
+  // their signed callback completion path until those in-flight rows drain.
+  if (!report.researchWorkflowRunId) await finalizeReportResearch(reportId);
+}
+
+export async function handleFirecrawlCompletion(input: {
+  jobId: string;
+  type: string;
+  error?: string;
+  metadata?: { reportId: string; kind: "crawl" | "batch-scrape"; comparableCompanyId?: number; targets: ReportResearchTarget[] };
+}) {
   researchLog("info", "firecrawl.webhook.received", { firecrawlJobId: input.jobId, type: input.type });
-  const job = await getReportResearchJobByExternalId(input.jobId);
+  let job = await getReportResearchJobByExternalId(input.jobId);
+  if (!job && input.metadata && await getReportById(input.metadata.reportId)) {
+    await addReportResearchJobs([{
+      reportId: input.metadata.reportId,
+      kind: input.metadata.kind,
+      comparableCompanyId: input.metadata.comparableCompanyId,
+      firecrawlJobId: input.jobId,
+      targets: input.metadata.targets,
+    }]);
+    job = await getReportResearchJobByExternalId(input.jobId);
+    if (!job) throw new Error("FIRECRAWL_WEBHOOK_JOB_NOT_DURABLE");
+    if (job) researchLog("warn", "firecrawl.webhook.job_recovered", { reportId: job.reportId, firecrawlJobId: input.jobId, kind: job.kind });
+  }
   if (!job) {
     researchLog("warn", "firecrawl.webhook.ignored", { firecrawlJobId: input.jobId, reason: "UNKNOWN_JOB" });
     return false;
   }
   if (job.status !== "running") {
+    if (job.status === "failed" && job.failureCode === "RESEARCH_CLEANUP_DEADLINE_EXCEEDED" && /\.(?:completed|failed)$/.test(input.type)) {
+      try {
+        const snapshot = await getFirecrawlJob(job.kind, job.firecrawlJobId, await reportMetering(job.reportId));
+        await recordExpiredReportResearchJobUsage(job.firecrawlJobId, snapshot.creditsUsed);
+        researchLog("info", "firecrawl.webhook.late_usage_recorded", { reportId: job.reportId, firecrawlJobId: input.jobId, creditsUsed: snapshot.creditsUsed });
+      } catch (cause) {
+        researchLog("warn", "firecrawl.webhook.late_usage_failed", { reportId: job.reportId, firecrawlJobId: input.jobId, failureCode: researchErrorCode(cause) });
+        throw cause;
+      }
+      await finishReportAfterTerminalResearchJobs(job.reportId);
+      return true;
+    }
     researchLog("info", "firecrawl.webhook.ignored", { reportId: job.reportId, firecrawlJobId: input.jobId, reason: "JOB_ALREADY_TERMINAL", status: job.status });
+    await finishReportAfterTerminalResearchJobs(job.reportId);
     return true;
   }
   if (input.type.endsWith(".failed")) {
     try {
       const snapshot = await getFirecrawlJob(job.kind, job.firecrawlJobId, await reportMetering(job.reportId));
-      await markReportResearchJob({ firecrawlJobId: input.jobId, status: "failed", creditsUsed: snapshot.creditsUsed, failureCode: input.error?.slice(0, 120) || "FIRECRAWL_JOB_FAILED" });
-      researchLog("warn", "firecrawl.webhook.job_failed", { reportId: job.reportId, firecrawlJobId: input.jobId, kind: job.kind, creditsUsed: snapshot.creditsUsed });
+      if (snapshot.status === "scraping") throw new Error("FIRECRAWL_TERMINAL_STATUS_PENDING");
+      const status = snapshot.status === "completed" ? "complete" : "failed";
+      await markReportResearchJob({ firecrawlJobId: input.jobId, status, creditsUsed: snapshot.creditsUsed, failureCode: status === "failed" ? input.error?.slice(0, 120) || "FIRECRAWL_JOB_FAILED" : null });
+      researchLog(status === "complete" ? "info" : "warn", "firecrawl.webhook.job_failed", { reportId: job.reportId, firecrawlJobId: input.jobId, kind: job.kind, status: snapshot.status, creditsUsed: snapshot.creditsUsed });
     } catch (cause) {
-      await markReportResearchJob({ firecrawlJobId: input.jobId, status: "failed", failureCode: input.error?.slice(0, 120) || "FIRECRAWL_JOB_FAILED" });
-      researchLog("warn", "firecrawl.webhook.job_failed", { reportId: job.reportId, firecrawlJobId: input.jobId, kind: job.kind, failureCode: researchErrorCode(cause) });
+      researchLog("warn", "firecrawl.webhook.job_failed_retryable", { reportId: job.reportId, firecrawlJobId: input.jobId, kind: job.kind, failureCode: researchErrorCode(cause) });
+      throw cause;
     }
   } else if (input.type.endsWith(".completed")) {
     try {
       const snapshot = await getFirecrawlJob(job.kind, job.firecrawlJobId, await reportMetering(job.reportId));
+      if (snapshot.status === "scraping") throw new Error("FIRECRAWL_TERMINAL_STATUS_PENDING");
       await markReportResearchJob({ firecrawlJobId: input.jobId, status: snapshot.status === "failed" ? "failed" : "complete", creditsUsed: snapshot.creditsUsed, failureCode: snapshot.status === "failed" ? "FIRECRAWL_JOB_FAILED" : null });
       researchLog(snapshot.status === "failed" ? "warn" : "info", "firecrawl.webhook.job_completed", { reportId: job.reportId, firecrawlJobId: input.jobId, kind: job.kind, status: snapshot.status, creditsUsed: snapshot.creditsUsed });
     } catch (cause) {
       researchLog("warn", "firecrawl.webhook.result_fetch_failed", { reportId: job.reportId, firecrawlJobId: input.jobId, kind: job.kind, failureCode: researchErrorCode(cause) });
-      return true;
+      throw cause;
     }
   } else {
     return true;
   }
-  const jobs = await listReportResearchJobs(job.reportId);
-  if (jobs.every((item) => item.status !== "running")) await finalizeReportResearch(job.reportId);
+  await finishReportAfterTerminalResearchJobs(job.reportId);
   return true;
 }
