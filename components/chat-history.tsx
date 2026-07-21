@@ -6,8 +6,18 @@ import { useEffect, useRef, useState } from "react";
 import { MessageSquareText, Pencil, Trash2, X } from "lucide-react";
 import { MAX_CHAT_TITLE_LENGTH, normalizeChatTitle } from "@/lib/chat-title";
 
-type HistoryChat = { id: string; title: string };
+type HistoryChat = { id: string; title: string; updatedAt: Date };
 type ContextMenu = { chat: HistoryChat; x: number; y: number };
+
+/** Compact relative age for hover tooltips, e.g. "now", "10m", "3h", "1d", "1w". */
+function relativeAge(date: Date): string {
+  const seconds = Math.max(0, (Date.now() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "now";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86_400) return `${Math.floor(seconds / 3600)}h`;
+  if (seconds < 604_800) return `${Math.floor(seconds / 86_400)}d`;
+  return `${Math.floor(seconds / 604_800)}w`;
+}
 
 export function ChatHistory({ chats }: { chats: HistoryChat[] }) {
   const router = useRouter();
@@ -131,6 +141,7 @@ export function ChatHistory({ chats }: { chats: HistoryChat[] }) {
           <Link
             href={`/chat/${chat.id}`}
             key={chat.id}
+            title={relativeAge(chat.updatedAt)}
             onContextMenu={(event) => { event.preventDefault(); openMenu(chat, event.clientX, event.clientY); }}
             onKeyDown={(event) => {
               if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;

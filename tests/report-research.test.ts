@@ -2,10 +2,11 @@ import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("@/lib/firecrawl/client", () => ({ recordFirecrawlUsage: vi.fn() }));
 import { resolveReportModel } from "@/config";
 import { normalizeReportDraft } from "@/lib/analysis/report-draft";
 import { buildReportDocument } from "@/lib/analysis/report";
-import { publicHttpsUrl, startWebsiteCrawl, verifyFirecrawlSignature } from "@/lib/research/firecrawl";
+import { publicHttpsUrl, searchComparableSources, startWebsiteCrawl, verifyFirecrawlSignature } from "@/lib/research/firecrawl";
 import { reportDocumentSchema, type ApplicationProfile, type ExtractedPdf, type GeneratedReportDraft, type PredictionResult } from "@/lib/types/analysis";
 import type { YcCompany } from "@/lib/types/company";
 
@@ -75,6 +76,7 @@ const company: YcCompany = {
 
 function generatedDraft(): GeneratedReportDraft {
   return {
+    title: "Test Co — B2B workflow automation",
     executiveNarrative: "The application has a clear workflow and needs stronger retention proof.",
     scoreInterpretation: "The score is a fit signal.",
     candidateEvidence: [
@@ -148,7 +150,13 @@ describe("research-enriched reports", () => {
       scrapeOptions: { maxAge: 86_400_000, onlyMainContent: true },
       webhook: {
         url: "https://app.example/api/webhooks/firecrawl",
-        metadata: { reportId: "report-1" },
+        events: ["started", "completed", "failed"],
+        metadata: {
+          reportId: "report-1",
+          kind: "crawl",
+          comparableCompanyId: 1,
+          targets: [{ companyId: 1, url: "https://peer.example/", sourceType: "company-website" }],
+        },
       },
     });
   });
@@ -167,6 +175,26 @@ describe("research-enriched reports", () => {
     const [, request] = fetchMock.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(String(request.body)) as Record<string, unknown>;
     expect(body).not.toHaveProperty("webhook");
+  });
+
+  it("does not replay a non-idempotent crawl launch after an ambiguous network failure", async () => {
+    vi.stubEnv("FIRECRAWL_API_KEY", "test-key");
+    vi.stubEnv("FIRECRAWL_WEBHOOK_SECRET", "test-secret");
+    vi.stubEnv("NEXT_PUBLIC_SITE_URL", "https://app.example");
+    const fetchMock = vi.fn().mockRejectedValue(new Error("connection reset"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(startWebsiteCrawl("report-1", company)).rejects.toMatchObject({ name: "FirecrawlLaunchAmbiguousError" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not replay a paid comparable search after an ambiguous response loss", async () => {
+    vi.stubEnv("FIRECRAWL_API_KEY", "test-key");
+    const fetchMock = vi.fn().mockRejectedValue(new Error("connection reset"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(searchComparableSources(company)).rejects.toThrow();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("removes invented citations and invalid PDF pages while locking company identity", () => {

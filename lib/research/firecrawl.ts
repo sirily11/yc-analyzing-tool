@@ -6,10 +6,12 @@ import { getMetadataBase } from "@/lib/site-metadata";
 import type { ReportResearchTarget } from "@/lib/db/schema";
 import type { YcCompany } from "@/lib/types/company";
 import { recordFirecrawlUsage } from "@/lib/firecrawl/client";
+import { createPendingUsage, markUsageNeedsReview } from "@/lib/billing/repository";
 import type { MeteringContext } from "@/lib/billing/usage";
 import { researchErrorCode, researchLog } from "./log";
 
 const FIRECRAWL_BASE_URL = "https://api.firecrawl.dev/v2";
+const comparableSearchFeature = "Firecrawl comparable search";
 const retryableStatuses = new Set([408, 429, 500, 502, 503, 504]);
 const excludedRelatedHosts = [
   "facebook.com", "instagram.com", "linkedin.com", "tiktok.com", "twitter.com", "x.com",
@@ -45,6 +47,45 @@ export type FirecrawlJobSnapshot = {
   documents: FirecrawlDocument[];
 };
 
+export class FirecrawlUsagePersistenceError extends Error {
+  constructor(cause?: unknown) {
+    super("FIRECRAWL_USAGE_NOT_DURABLE", { cause });
+    this.name = "FirecrawlUsagePersistenceError";
+  }
+}
+
+export class FirecrawlLaunchAmbiguousError extends Error {
+  constructor(kind: "crawl" | "batch-scrape", cause?: unknown) {
+    super(`FIRECRAWL_${kind === "crawl" ? "CRAWL" : "BATCH"}_LAUNCH_AMBIGUOUS`, { cause });
+    this.name = "FirecrawlLaunchAmbiguousError";
+  }
+}
+
+export function comparableSearchUsageKey(operationId: string, companyId: number) {
+  return `firecrawl:${operationId}:comparable-search:${companyId}`;
+}
+
+function comparableSearchExternalId(operationId: string, companyId: number) {
+  return `${operationId}:comparable-search:${companyId}`;
+}
+
+export async function prepareComparableSearchUsage(companies: YcCompany[], metering?: MeteringContext) {
+  if (!metering?.userId || !metering.reservationId) return;
+  await Promise.all(companies.map((company) => createPendingUsage({
+    userId: metering.userId!,
+    reservationId: metering.reservationId!,
+    feature: comparableSearchFeature,
+    provider: "firecrawl",
+    externalId: comparableSearchExternalId(metering.operationId, company.id),
+    idempotencyKey: comparableSearchUsageKey(metering.operationId, company.id),
+  })));
+}
+
+export async function markComparableSearchUsageForReview(companyIds: number[], metering?: MeteringContext) {
+  if (!metering?.userId || !metering.reservationId) return;
+  await Promise.all(companyIds.map((companyId) => markUsageNeedsReview(comparableSearchUsageKey(metering.operationId, companyId))));
+}
+
 function firecrawlApiKey() {
   const value = process.env.FIRECRAWL_API_KEY?.trim();
   if (!value) throw new Error("FIRECRAWL_NOT_CONFIGURED");
@@ -53,6 +94,10 @@ function firecrawlApiKey() {
 
 export function firecrawlWebhookUrl() {
   return new URL("/api/webhooks/firecrawl", getMetadataBase()).toString();
+}
+
+export function hasFirecrawlWebhookConfig() {
+  return Boolean(process.env.FIRECRAWL_WEBHOOK_SECRET?.trim() && publicHttpsUrl(firecrawlWebhookUrl()));
 }
 
 function wait(milliseconds: number) {
@@ -79,8 +124,12 @@ async function firecrawlRequest<T>(pathOrUrl: string, init: RequestInit = {}): P
   const url = pathOrUrl.startsWith("https://") ? pathOrUrl : `${FIRECRAWL_BASE_URL}${pathOrUrl}`;
   const operation = requestOperation(pathOrUrl);
   const apiKey = firecrawlApiKey();
+  // Crawl and batch creation have no caller-supplied idempotency key. If the
+  // provider accepts a POST but its response is lost, replaying it can create
+  // another paid job. Signed `started` webhooks recover the accepted job ID.
+  const maxAttempts = operation === "search" || operation === "crawl.start" || operation === "batch.start" ? 1 : 3;
   let lastResponse: Response | null = null;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const startedAt = Date.now();
     researchLog("info", "firecrawl.api.request", { operation, method: init.method ?? "GET", attempt: attempt + 1 });
     let response: Response;
@@ -97,7 +146,7 @@ async function firecrawlRequest<T>(pathOrUrl: string, init: RequestInit = {}): P
       });
     } catch (cause) {
       const failureCode = researchErrorCode(cause);
-      if (attempt === 2) {
+      if (attempt === maxAttempts - 1) {
         researchLog("error", "firecrawl.api.failed", { operation, attempt: attempt + 1, failureCode, durationMs: Date.now() - startedAt });
         throw new Error(`FIRECRAWL_${failureCode}`);
       }
@@ -111,7 +160,7 @@ async function firecrawlRequest<T>(pathOrUrl: string, init: RequestInit = {}): P
       return response.json() as Promise<T>;
     }
     lastResponse = response;
-    if (!retryableStatuses.has(response.status) || attempt === 2) {
+    if (!retryableStatuses.has(response.status) || attempt === maxAttempts - 1) {
       researchLog("error", "firecrawl.api.failed", { operation, attempt: attempt + 1, status: response.status, durationMs: Date.now() - startedAt });
       break;
     }
@@ -156,23 +205,60 @@ function isExcludedRelatedUrl(value: string) {
   return !host || excludedRelatedHosts.some((blocked) => host === blocked || host.endsWith(`.${blocked}`));
 }
 
+function ambiguousSearchFailure(cause: unknown) {
+  const message = cause instanceof Error ? cause.message : "";
+  if (message === "FIRECRAWL_NOT_CONFIGURED") return false;
+  const status = /FIRECRAWL_HTTP_(\d+)/.exec(message)?.[1];
+  return status ? retryableStatuses.has(Number(status)) : true;
+}
+
 export async function searchComparableSources(company: YcCompany, metering?: MeteringContext): Promise<ReportResearchTarget[]> {
   researchLog("info", "firecrawl.search.started", { companyId: company.id, companyName: company.name });
-  const response = await firecrawlRequest<{ success: boolean; id?: string; creditsUsed?: number; data?: { web?: FirecrawlSearchResult[] } }>("/search", {
-    method: "POST",
-    body: JSON.stringify({
-      query: `"${company.name}" product customers business model traction founders interview`,
-      limit: 6,
-      sources: ["web"],
-      ignoreInvalidURLs: true,
-      timeout: 30_000,
-    }),
-  });
-  await recordFirecrawlUsage(metering, {
-    feature: "Firecrawl comparable search",
-    externalId: response.id ?? `${metering?.operationId ?? "platform"}:comparable-search:${company.id}`,
-    creditsUsed: response.creditsUsed,
-  });
+  const operationId = metering?.operationId ?? "platform";
+  const idempotencyKey = comparableSearchUsageKey(operationId, company.id);
+  const fallbackExternalId = comparableSearchExternalId(operationId, company.id);
+  let response: { success: boolean; id?: string; creditsUsed?: number; data?: { web?: FirecrawlSearchResult[] } };
+  try {
+    response = await firecrawlRequest("/search", {
+      method: "POST",
+      body: JSON.stringify({
+        query: `"${company.name}" product customers business model traction founders interview`,
+        limit: 6,
+        sources: ["web"],
+        ignoreInvalidURLs: true,
+        timeout: 30_000,
+      }),
+    });
+  } catch (cause) {
+    try {
+      if (ambiguousSearchFailure(cause)) {
+        if (metering?.userId && metering.reservationId) {
+          if (!await markUsageNeedsReview(idempotencyKey)) throw new Error("FIRECRAWL_PENDING_USAGE_NOT_FOUND");
+        } else {
+          await recordFirecrawlUsage(metering, { feature: comparableSearchFeature, externalId: fallbackExternalId, idempotencyKey });
+        }
+      } else if (metering?.userId && metering.reservationId) {
+        await recordFirecrawlUsage(metering, { feature: comparableSearchFeature, externalId: fallbackExternalId, creditsUsed: 0, idempotencyKey });
+      }
+    } catch (accountingCause) {
+      throw new FirecrawlUsagePersistenceError(accountingCause);
+    }
+    throw cause;
+  }
+  try {
+    await recordFirecrawlUsage(metering, {
+      feature: comparableSearchFeature,
+      externalId: response.id ?? fallbackExternalId,
+      creditsUsed: response.creditsUsed,
+      idempotencyKey,
+    });
+  } catch (cause) {
+    try {
+      if (!metering?.userId || !metering.reservationId || !await markUsageNeedsReview(idempotencyKey)) throw cause;
+    } catch (accountingCause) {
+      throw new FirecrawlUsagePersistenceError(accountingCause);
+    }
+  }
   const companyHost = normalizedHost(company.website);
   const seen = new Set<string>();
   const rawResults = response.data?.web ?? [];
@@ -194,7 +280,7 @@ export async function searchComparableSources(company: YcCompany, metering?: Met
   return selected;
 }
 
-function webhook(reportId: string) {
+function webhook(reportId: string, metadata: { kind: "crawl" | "batch-scrape"; comparableCompanyId?: number; targets: ReportResearchTarget[] }) {
   if (!process.env.FIRECRAWL_WEBHOOK_SECRET?.trim()) return null;
   const url = publicHttpsUrl(firecrawlWebhookUrl());
   if (!url) {
@@ -203,8 +289,8 @@ function webhook(reportId: string) {
   }
   return {
     url,
-    events: ["completed", "failed"],
-    metadata: { reportId },
+    events: ["started", "completed", "failed"],
+    metadata: { reportId, ...metadata },
   };
 }
 
@@ -214,35 +300,42 @@ export async function startWebsiteCrawl(reportId: string, company: YcCompany) {
     researchLog("warn", "firecrawl.crawl.skipped", { reportId, companyId: company.id, reason: "INVALID_PUBLIC_HTTPS_URL" });
     return null;
   }
+  const target = { companyId: company.id, url, sourceType: "company-website" as const };
   researchLog("info", "firecrawl.crawl.started", { reportId, companyId: company.id, pageLimit: appConfig.reportResearch.websitePageLimit, maxDepth: 1 });
-  const webhookConfig = webhook(reportId);
-  const result = await firecrawlRequest<FirecrawlJobStart>("/crawl", {
-    method: "POST",
-    body: JSON.stringify({
-      url,
-      maxDiscoveryDepth: 1,
-      sitemap: "include",
-      ignoreQueryParameters: true,
-      limit: appConfig.reportResearch.websitePageLimit,
-      crawlEntireDomain: true,
-      allowExternalLinks: false,
-      allowSubdomains: false,
-      ignoreRobotsTxt: false,
-      maxConcurrency: 2,
-      scrapeOptions: {
-        formats: ["markdown"],
-        onlyMainContent: true,
-        maxAge: appConfig.reportResearch.cacheMaxAgeMs,
-        removeBase64Images: true,
-        blockAds: true,
-      },
-      ...(webhookConfig ? { webhook: webhookConfig } : {}),
-    }),
-  });
+  const webhookConfig = webhook(reportId, { kind: "crawl", comparableCompanyId: company.id, targets: [target] });
+  let result: FirecrawlJobStart;
+  try {
+    result = await firecrawlRequest<FirecrawlJobStart>("/crawl", {
+      method: "POST",
+      body: JSON.stringify({
+        url,
+        maxDiscoveryDepth: 1,
+        sitemap: "include",
+        ignoreQueryParameters: true,
+        limit: appConfig.reportResearch.websitePageLimit,
+        crawlEntireDomain: true,
+        allowExternalLinks: false,
+        allowSubdomains: false,
+        ignoreRobotsTxt: false,
+        maxConcurrency: 2,
+        scrapeOptions: {
+          formats: ["markdown"],
+          onlyMainContent: true,
+          maxAge: appConfig.reportResearch.cacheMaxAgeMs,
+          removeBase64Images: true,
+          blockAds: true,
+        },
+        ...(webhookConfig ? { webhook: webhookConfig } : {}),
+      }),
+    });
+  } catch (cause) {
+    if (ambiguousSearchFailure(cause)) throw new FirecrawlLaunchAmbiguousError("crawl", cause);
+    throw cause;
+  }
   researchLog("info", "firecrawl.crawl.queued", { reportId, companyId: company.id, firecrawlJobId: result.id });
   return {
     firecrawlJobId: result.id,
-    target: { companyId: company.id, url, sourceType: "company-website" as const },
+    target,
   };
 }
 
@@ -253,21 +346,27 @@ export async function startRelatedBatch(reportId: string, targets: ReportResearc
     return null;
   }
   researchLog("info", "firecrawl.batch.started", { reportId, targetCount: unique.length });
-  const webhookConfig = webhook(reportId);
-  const result = await firecrawlRequest<FirecrawlJobStart>("/batch/scrape", {
-    method: "POST",
-    body: JSON.stringify({
-      urls: unique.map((target) => target.url),
-      ignoreInvalidURLs: true,
-      maxConcurrency: 3,
-      formats: ["markdown"],
-      onlyMainContent: true,
-      maxAge: appConfig.reportResearch.cacheMaxAgeMs,
-      removeBase64Images: true,
-      blockAds: true,
-      ...(webhookConfig ? { webhook: webhookConfig } : {}),
-    }),
-  });
+  const webhookConfig = webhook(reportId, { kind: "batch-scrape", targets: unique });
+  let result: FirecrawlJobStart;
+  try {
+    result = await firecrawlRequest<FirecrawlJobStart>("/batch/scrape", {
+      method: "POST",
+      body: JSON.stringify({
+        urls: unique.map((target) => target.url),
+        ignoreInvalidURLs: true,
+        maxConcurrency: 3,
+        formats: ["markdown"],
+        onlyMainContent: true,
+        maxAge: appConfig.reportResearch.cacheMaxAgeMs,
+        removeBase64Images: true,
+        blockAds: true,
+        ...(webhookConfig ? { webhook: webhookConfig } : {}),
+      }),
+    });
+  } catch (cause) {
+    if (ambiguousSearchFailure(cause)) throw new FirecrawlLaunchAmbiguousError("batch-scrape", cause);
+    throw cause;
+  }
   researchLog("info", "firecrawl.batch.queued", { reportId, targetCount: unique.length, firecrawlJobId: result.id });
   return { firecrawlJobId: result.id, targets: unique };
 }

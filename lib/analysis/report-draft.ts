@@ -100,6 +100,8 @@ Use the founder's approved source for candidate claims. Use public research only
 
 Founder analysis is limited to public professional evidence relevant to building the company. Do not use or infer sensitive traits, personal life, demographics, prestige, named schools, or employer prestige. Comparable founder research is qualitative context only and must not affect the fit score.
 
+Write a concise report title that names the company and its focus, drawn from the profile and approved source (for example, "Acme — AI claims automation for health insurers"). Do not use the source file name, and never put the fit score, a rating, or "YC Fit Report" in the title; the application adds its own framing.
+
 Be specific, candid, and practical. Distinguish facts from inference, say when evidence is missing, and produce suggested framing rather than fabricating customer quotes, metrics, or achievements. For PDF evidence use real page numbers from the source markers; for a chat brief use null pages.`,
     prompt: `Draft the structured dossier from these locked inputs.
 

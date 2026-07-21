@@ -141,4 +141,38 @@ describe("prepaid credit accounting", () => {
     expect(summary.balancePoints).toBe(99);
     expect(summary.reservedPoints).toBe(0);
   });
+
+  it("moves later pending usage to review after the reservation is parked", async () => {
+    const reservation = await repository.reserveCredits({
+      userId: "user-4",
+      operationKey: "report:user-4:1",
+      feature: "Application report",
+      points: 200,
+      reportFeePoints: 100,
+      scopeId: "report-4",
+    });
+    for (const idempotencyKey of ["firecrawl:search:one", "firecrawl:search:two"]) {
+      await repository.createPendingUsage({
+        userId: "user-4",
+        reservationId: reservation!.id,
+        feature: "Firecrawl comparable search",
+        provider: "firecrawl",
+        idempotencyKey,
+      });
+    }
+    await repository.markUsageNeedsReview("firecrawl:search:one");
+    const later = await repository.settleProviderUsage({
+      userId: "user-4",
+      reservationId: reservation!.id,
+      feature: "Firecrawl comparable search",
+      provider: "firecrawl",
+      externalId: "search-two",
+      providerCredits: 1,
+      costNanoUsd: 1_000_000,
+      idempotencyKey: "firecrawl:search:two",
+    });
+
+    expect(later?.status).toBe("needs_review");
+    expect((await repository.getBillingSummary("user-4")).reservedPoints).toBe(200);
+  });
 });

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, or } from "drizzle-orm";
 import type { UIMessage } from "ai";
 import { appConfig } from "@/config";
 import { DEFAULT_CHAT_TITLE } from "@/lib/chat-title";
@@ -17,7 +17,13 @@ export async function createChat(userId: string, title = DEFAULT_CHAT_TITLE) {
 }
 
 export async function listChats(userId: string) {
-  return db.select().from(chats).where(eq(chats.userId, userId)).orderBy(desc(chats.updatedAt));
+  // Only surface conversations active within the last 7 days; older ones are hidden.
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  return db
+    .select()
+    .from(chats)
+    .where(and(eq(chats.userId, userId), gte(chats.updatedAt, cutoff)))
+    .orderBy(desc(chats.updatedAt));
 }
 
 export async function getChat(userId: string, id: string): Promise<typeof chats.$inferSelect | null> {
@@ -113,10 +119,14 @@ export async function createReport(input: { userId: string; chatId: string; sour
 }
 
 export async function completeReport(input: { id: string; userId: string; profile: ApplicationProfile; prediction: PredictionResult; document: ReportDocument }) {
-  await db.update(reports).set({ status: "complete", profile: input.profile, prediction: input.prediction, document: input.document, failureCode: null, updatedAt: new Date() }).where(and(eq(reports.id, input.id), eq(reports.userId, input.userId)));
+  const updated = await db.update(reports)
+    .set({ status: "complete", profile: input.profile, prediction: input.prediction, document: input.document, failureCode: null, updatedAt: new Date() })
+    .where(and(eq(reports.id, input.id), eq(reports.userId, input.userId), eq(reports.status, "drafting")))
+    .returning({ id: reports.id });
+  return updated[0] ?? null;
 }
 
-export async function beginReportResearch(input: { id: string; userId: string; profile: ApplicationProfile; prediction: PredictionResult }) {
+export async function beginReportResearch(input: { id: string; userId: string; profile: ApplicationProfile; prediction: PredictionResult; workflowRunId: string }) {
   const now = new Date();
   const updated = await db.update(reports).set({
     status: "researching",
@@ -124,6 +134,7 @@ export async function beginReportResearch(input: { id: string; userId: string; p
     prediction: input.prediction,
     reportModel: appConfig.reportModel,
     researchDeadlineAt: new Date(now.getTime() + appConfig.reportResearch.deadlineMs),
+    researchWorkflowRunId: input.workflowRunId,
     failureCode: null,
     updatedAt: now,
   }).where(and(eq(reports.id, input.id), eq(reports.userId, input.userId), eq(reports.status, "processing"))).returning({ id: reports.id });
@@ -149,7 +160,7 @@ export async function addReportResearchJobs(values: Array<{
     targets: value.targets,
     createdAt: now,
     updatedAt: now,
-  })));
+  }))).onConflictDoNothing({ target: reportResearchJobs.firecrawlJobId });
 }
 
 export async function listReportResearchJobs(reportId: string) {
@@ -167,7 +178,29 @@ export async function markReportResearchJob(input: { firecrawlJobId: string; sta
     failureCode: input.failureCode ?? null,
     lastCheckedAt: new Date(),
     updatedAt: new Date(),
-  }).where(eq(reportResearchJobs.firecrawlJobId, input.firecrawlJobId)).returning();
+  }).where(and(eq(reportResearchJobs.firecrawlJobId, input.firecrawlJobId), eq(reportResearchJobs.status, "running"))).returning();
+  return updated[0] ?? null;
+}
+
+export async function failRunningReportResearchJobs(reportId: string, failureCode: string) {
+  return db.update(reportResearchJobs).set({
+    status: "failed",
+    failureCode,
+    lastCheckedAt: new Date(),
+    updatedAt: new Date(),
+  }).where(and(eq(reportResearchJobs.reportId, reportId), eq(reportResearchJobs.status, "running"))).returning({ id: reportResearchJobs.id });
+}
+
+export async function recordExpiredReportResearchJobUsage(firecrawlJobId: string, creditsUsed: number) {
+  const updated = await db.update(reportResearchJobs).set({
+    creditsUsed: Math.max(0, Math.floor(creditsUsed)),
+    lastCheckedAt: new Date(),
+    updatedAt: new Date(),
+  }).where(and(
+    eq(reportResearchJobs.firecrawlJobId, firecrawlJobId),
+    eq(reportResearchJobs.status, "failed"),
+    eq(reportResearchJobs.failureCode, "RESEARCH_CLEANUP_DEADLINE_EXCEEDED"),
+  )).returning({ id: reportResearchJobs.id });
   return updated[0] ?? null;
 }
 
@@ -193,10 +226,20 @@ export async function reclaimStaleReportDrafting(id: string, staleBefore: Date) 
   return updated[0] ?? null;
 }
 
-export async function failReport(id: string, userId: string, failureCode: string) {
-  await db.update(reports).set({ status: "failed", failureCode, updatedAt: new Date() }).where(and(eq(reports.id, id), eq(reports.userId, userId)));
+export async function failReport(id: string, userId: string, failureCode: string, workflowRunId?: string) {
+  const failed = await db.update(reports).set({ status: "failed", failureCode, updatedAt: new Date() }).where(and(
+    eq(reports.id, id),
+    eq(reports.userId, userId),
+    inArray(reports.status, ["processing", "researching", "drafting"]),
+    ...(workflowRunId ? [or(eq(reports.status, "processing"), eq(reports.researchWorkflowRunId, workflowRunId))!] : []),
+  )).returning({ id: reports.id });
+  if (!failed[0]) {
+    const existing = await getReport(userId, id);
+    if (existing?.status !== "failed" || (workflowRunId && existing.researchWorkflowRunId && existing.researchWorkflowRunId !== workflowRunId)) return null;
+  }
   const reservation = await findOpenReservationByScope(userId, id);
   if (reservation) await closeReservation({ reservationId: reservation.id, userId, success: false, scopeId: id });
+  return failed[0] ?? { id };
 }
 
 export async function listReports(userId: string) {

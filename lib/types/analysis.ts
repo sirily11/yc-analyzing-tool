@@ -163,6 +163,7 @@ export const reportActionPlanItemSchema = z.object({
 });
 
 export const generatedReportDraftSchema = z.object({
+  title: z.string().min(1).max(120),
   executiveNarrative: z.string().min(1).max(1_500),
   scoreInterpretation: z.string().min(1).max(1_200),
   candidateEvidence: z.array(candidateEvidenceSchema).min(1).max(12),

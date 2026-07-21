@@ -1,0 +1,1 @@
+ALTER TABLE `reports` ADD `research_workflow_run_id` text;

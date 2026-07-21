@@ -108,7 +108,7 @@ function stableUsageKey(value: string) {
   return createHash("sha256").update(value).digest("hex").slice(0, 24);
 }
 
-export async function recordFirecrawlUsage(context: MeteringContext | undefined, input: { feature: string; externalId: string; creditsUsed?: number }) {
+export async function recordFirecrawlUsage(context: MeteringContext | undefined, input: { feature: string; externalId: string; creditsUsed?: number; idempotencyKey?: string }) {
   if (!context) return;
   const missingPrice = billingConfig.enabled && billingConfig.firecrawlUsdPerCredit <= 0;
   if (missingPrice) throw new Error("FIRECRAWL_USD_PER_CREDIT_REQUIRED");
@@ -120,7 +120,7 @@ export async function recordFirecrawlUsage(context: MeteringContext | undefined,
     externalId: input.externalId,
     providerCredits: input.creditsUsed ?? null,
     costNanoUsd: nanoUsdFromUsd((input.creditsUsed ?? 0) * billingConfig.firecrawlUsdPerCredit),
-    idempotencyKey: `firecrawl:${input.externalId}:${input.feature}`,
+    idempotencyKey: input.idempotencyKey ?? `firecrawl:${input.externalId}:${input.feature}`,
     needsReview: input.creditsUsed === undefined,
   });
 }

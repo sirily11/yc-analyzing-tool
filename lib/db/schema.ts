@@ -52,6 +52,7 @@ export const reports = sqliteTable("reports", {
   datasetVersion: text("dataset_version").notNull(),
   reportModel: text("report_model"),
   researchDeadlineAt: integer("research_deadline_at", { mode: "timestamp_ms" }),
+  researchWorkflowRunId: text("research_workflow_run_id"),
   failureCode: text("failure_code"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
