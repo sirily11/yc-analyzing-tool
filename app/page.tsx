@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Mail } from "lucide-react";
 import { PublicExplorer } from "@/components/public-explorer";
 import { SiteHeader } from "@/components/site-header";
 
@@ -16,6 +16,19 @@ export default function HomePage() {
         </div>
       </section>
       <section className="cta-band"><div><h2>Bring your plan into the map.</h2><p>Sign in, upload a selectable-text PDF, approve the analysis, and receive a private visual report with practical improvements.</p></div><Link className="button-primary" href="/login">Start an analysis <ArrowRight size={16} /></Link></section>
+      <section className="contact-band" id="contact">
+        <div>
+          <p className="eyebrow">Contact us</p>
+          <h2>Found an issue?</h2>
+        </div>
+        <div className="contact-copy">
+          <p>Send us a note and we’ll help you sort it out.</p>
+          <a href="mailto:support@rxlab.app?subject=Issue">
+            <Mail size={17} aria-hidden="true" />
+            support@rxlab.app
+          </a>
+        </div>
+      </section>
       <footer className="footer"><span>Application Signal · Independent directory analysis</span><span>Source: YC public directory mirror · Synced from Turso</span></footer>
     </main>
   );
