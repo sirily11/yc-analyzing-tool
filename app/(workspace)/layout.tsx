@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { Coins, LayoutDashboard, Radar } from "lucide-react";
 import { AppSidebar } from "@/components/app-shell";
+import { SidebarNavigation } from "@/components/sidebar-navigation";
 import { getBillingSummary } from "@/lib/billing/repository";
 import { getDashboardShellData } from "@/lib/dashboard-shell";
 
@@ -15,11 +15,7 @@ function DashboardSidebarLoading() {
   return (
     <aside className="app-sidebar app-sidebar-loading" aria-label="Loading workspace navigation">
       <Link href="/" className="brand"><span className="brand-mark">A</span><span>APPLICATION<br />SIGNAL</span></Link>
-      <nav className="app-nav">
-        <Link href="/dashboard"><LayoutDashboard size={15} /> Overview</Link>
-        <Link href="/dashboard#reports"><Radar size={15} /> Reports</Link>
-        <Link href="/credits"><Coins size={15} /> Credits</Link>
-      </nav>
+      <SidebarNavigation />
       <div className="sidebar-section">
         <div className="sidebar-heading"><span>Conversations</span></div>
         <div className="sidebar-loading-lines" aria-hidden="true"><span /><span /><span /><span /></div>

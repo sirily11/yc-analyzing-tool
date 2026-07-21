@@ -50,24 +50,25 @@ export default async function CreditsPage({ searchParams }: { searchParams: Prom
               </div>
             )) : <p className="credits-empty">No point activity yet.</p>}
           </div>
+          <Link className="button-ghost history-view-all" href="/point/history?page=1">View all point usage</Link>
         </div>
         <div>
           <div className="credits-section-heading"><span className="eyebrow">Top-ups & invoices</span><p>Invoices are issued by Stripe.</p></div>
           <div className="credit-list">
             {summary.topups.length ? summary.topups.map((topup) => (
               <div className="credit-row topup" key={topup.id}>
-                <span><strong>{topup.points.toLocaleString("en-US")} points</strong><small>{date(topup.createdAt)} · {topup.status}</small></span>
+                <span><strong>{topup.points.toLocaleString("en-US")} points</strong><small>{date(topup.paidAt ?? topup.createdAt)} · paid</small></span>
                 <span className="invoice-links">
                   {topup.hostedInvoiceUrl ? <Link href={topup.hostedInvoiceUrl} target="_blank" rel="noreferrer">Invoice</Link> : null}
                   {topup.invoicePdfUrl ? <Link href={topup.invoicePdfUrl} target="_blank" rel="noreferrer">PDF</Link> : null}
                   {!topup.hostedInvoiceUrl && !topup.invoicePdfUrl ? <small>${(topup.amountCents / 100).toFixed(2)}</small> : null}
                 </span>
               </div>
-            )) : <p className="credits-empty">No top-ups yet.</p>}
+            )) : <p className="credits-empty">No paid top-ups yet.</p>}
           </div>
+          <Link className="button-ghost history-view-all" href="/invoices?page=1">View all invoices</Link>
         </div>
       </section>
     </div>
   );
 }
-

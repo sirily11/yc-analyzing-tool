@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { billingConfig, CREDIT_PACKS, NANO_USD_PER_POINT } from "@/lib/billing/config";
 import { InsufficientCreditsError } from "@/lib/billing/errors";
 import { db } from "@/lib/db";
@@ -15,6 +15,9 @@ import {
 } from "@/lib/db/schema";
 
 export type UsageFundingScope = "user" | "platform";
+
+export const BILLING_HISTORY_PAGE_SIZE = 20;
+export const BILLING_SUMMARY_HISTORY_LIMIT = 10;
 
 export function nanoUsdFromUsd(usd: number) {
   if (!Number.isFinite(usd) || usd < 0) throw new Error("INVALID_PROVIDER_COST");
@@ -68,8 +71,11 @@ export async function ensureBillingAccount(userId: string) {
 export async function getBillingSummary(userId: string) {
   const account = await ensureBillingAccount(userId);
   const [ledger, topups] = await Promise.all([
-    db.select().from(pointsLedger).where(eq(pointsLedger.userId, userId)).orderBy(desc(pointsLedger.createdAt)).limit(100),
-    db.select().from(billingTopups).where(eq(billingTopups.userId, userId)).orderBy(desc(billingTopups.createdAt)).limit(50),
+    db.select().from(pointsLedger).where(eq(pointsLedger.userId, userId)).orderBy(desc(pointsLedger.createdAt), desc(pointsLedger.id)).limit(BILLING_SUMMARY_HISTORY_LIMIT),
+    db.select().from(billingTopups).where(and(
+      eq(billingTopups.userId, userId),
+      eq(billingTopups.status, "paid"),
+    )).orderBy(desc(billingTopups.createdAt), desc(billingTopups.id)).limit(BILLING_SUMMARY_HISTORY_LIMIT),
   ]);
   return {
     enabled: billingConfig.enabled,
@@ -80,6 +86,40 @@ export async function getBillingSummary(userId: string) {
     ledger,
     topups,
   };
+}
+
+function paginatedHistory(total: number, requestedPage: number) {
+  const pageCount = Math.max(1, Math.ceil(total / BILLING_HISTORY_PAGE_SIZE));
+  const currentPage = Math.min(Math.max(1, requestedPage), pageCount);
+  return {
+    currentPage,
+    pageCount,
+    offset: (currentPage - 1) * BILLING_HISTORY_PAGE_SIZE,
+  };
+}
+
+export async function getPointHistory(userId: string, requestedPage: number) {
+  await ensureBillingAccount(userId);
+  const [{ total }] = await db.select({ total: count() }).from(pointsLedger).where(eq(pointsLedger.userId, userId));
+  const pagination = paginatedHistory(total, requestedPage);
+  const entries = await db.select().from(pointsLedger)
+    .where(eq(pointsLedger.userId, userId))
+    .orderBy(desc(pointsLedger.createdAt), desc(pointsLedger.id))
+    .limit(BILLING_HISTORY_PAGE_SIZE)
+    .offset(pagination.offset);
+  return { entries, total, currentPage: pagination.currentPage, pageCount: pagination.pageCount };
+}
+
+export async function getInvoiceHistory(userId: string, requestedPage: number) {
+  const paidForUser = and(eq(billingTopups.userId, userId), eq(billingTopups.status, "paid"));
+  const [{ total }] = await db.select({ total: count() }).from(billingTopups).where(paidForUser);
+  const pagination = paginatedHistory(total, requestedPage);
+  const invoices = await db.select().from(billingTopups)
+    .where(paidForUser)
+    .orderBy(desc(billingTopups.createdAt), desc(billingTopups.id))
+    .limit(BILLING_HISTORY_PAGE_SIZE)
+    .offset(pagination.offset);
+  return { invoices, total, currentPage: pagination.currentPage, pageCount: pagination.pageCount };
 }
 
 export async function getBillingAccount(userId: string) {
