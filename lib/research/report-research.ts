@@ -5,6 +5,7 @@ import { appConfig, hasFirecrawlConfig } from "@/config";
 import { collectChatAnalysisText, collectChatAnalysisTextForReport } from "@/lib/ai/chat-source";
 import { draftResearchReport, type ResearchMaterial } from "@/lib/analysis/report-draft";
 import { buildReportDocument } from "@/lib/analysis/report";
+import { buildYcDatasetResearchFallback } from "@/lib/analysis/yc-report-fallback";
 import {
   addReportResearchJobs,
   claimReportDrafting,
@@ -25,7 +26,7 @@ import type { ReportResearchTarget } from "@/lib/db/schema";
 import { readRetainedDocument } from "@/lib/storage/chat-documents";
 import type { ComparableResearchSource, ExtractedPdf, PredictionResult } from "@/lib/types/analysis";
 import type { YcCompany } from "@/lib/types/company";
-import { loadYcCompanies } from "@/lib/yc/companies";
+import { getYcCompanyDatasetEvidenceByIds, loadYcCompanies } from "@/lib/yc/companies";
 import {
   getFirecrawlJob,
   FirecrawlLaunchAmbiguousError,
@@ -299,6 +300,16 @@ export async function finalizeReportResearch(reportId: string, options: { force?
   const research = await collectResearchMaterials(reportId);
   const coverage = researchCoverage(comparables, research.sources);
   if (coverage !== "complete") research.warnings.push(coverage === "unavailable" ? "External comparable-company research was unavailable; the dossier uses the public YC dataset and approved source." : "Some comparable-company sources were unavailable; cited findings use only completed research.");
+  const datasetEvidence = comparables.length
+    ? await getYcCompanyDatasetEvidenceByIds(comparables.map((company) => company.id))
+    : [];
+  const datasetFallback = buildYcDatasetResearchFallback({
+    companies: comparables,
+    evidence: datasetEvidence,
+    externalSources: research.sources,
+  });
+  const researchSources = [...research.sources, ...datasetFallback.sources];
+  const researchMaterials = [...research.materials, ...datasetFallback.materials];
   let draft = null;
   const metering = await reportMetering(reportId, claimed.userId);
   try {
@@ -307,8 +318,8 @@ export async function finalizeReportResearch(reportId: string, options: { force?
       profile: claimed.profile,
       prediction: claimed.prediction,
       companies: comparables,
-      researchSources: research.sources,
-      materials: research.materials,
+      researchSources,
+      materials: researchMaterials,
     }, metering ? { ...metering, feature: "Application report drafting" } : undefined);
     if (draft) {
       researchLog("info", "report.drafting.model_completed", { reportId, model: appConfig.reportModel, usedModelDraft: true });
@@ -322,15 +333,16 @@ export async function finalizeReportResearch(reportId: string, options: { force?
   }
   const document = buildReportDocument(claimed.profile, claimed.prediction, companies, {
     draft: draft ?? undefined,
-    researchSources: research.sources.length ? research.sources : undefined,
+    researchSources: researchSources.length ? researchSources : undefined,
     researchWarnings: research.warnings,
     researchStatus: coverage,
     draftModel: appConfig.reportModel,
+    datasetEvidence,
   });
   const completed = await completeReport({ id: claimed.id, userId: claimed.userId, profile: claimed.profile, prediction: claimed.prediction, document });
   if (!completed && (await getReportById(reportId))?.status !== "complete") return false;
   if (options.settleReservation !== false) await settleCompletedReportResearch(reportId);
-  researchLog("info", "report.drafting.completed", { reportId, researchCoverage: coverage, sourceCount: research.sources.length, warningCount: research.warnings.length, usedModelDraft: Boolean(draft) });
+  researchLog("info", "report.drafting.completed", { reportId, researchCoverage: coverage, sourceCount: researchSources.length, datasetFallbackCount: datasetFallback.sources.length, warningCount: research.warnings.length, usedModelDraft: Boolean(draft) });
   return true;
 }
 

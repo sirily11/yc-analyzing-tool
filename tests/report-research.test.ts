@@ -6,6 +6,7 @@ vi.mock("@/lib/firecrawl/client", () => ({ recordFirecrawlUsage: vi.fn() }));
 import { resolveReportModel } from "@/config";
 import { normalizeReportDraft } from "@/lib/analysis/report-draft";
 import { buildReportDocument } from "@/lib/analysis/report";
+import { buildYcDatasetResearchFallback } from "@/lib/analysis/yc-report-fallback";
 import { publicHttpsUrl, searchComparableSources, startWebsiteCrawl, verifyFirecrawlSignature } from "@/lib/research/firecrawl";
 import { reportDocumentSchema, type ApplicationProfile, type ExtractedPdf, type GeneratedReportDraft, type PredictionResult } from "@/lib/types/analysis";
 import type { YcCompany } from "@/lib/types/company";
@@ -211,11 +212,40 @@ describe("research-enriched reports", () => {
   });
 
   it("builds a backward-readable version 2 document without changing the locked prediction", () => {
-    const report = buildReportDocument(profile, prediction, [company]);
+    const report = buildReportDocument(profile, prediction, [company], {
+      datasetEvidence: [{ companyId: 1, longDescription: "Peer automates operations reconciliation for finance teams.", tags: ["SaaS", "Fintech"] }],
+    });
     expect(reportDocumentSchema.parse(report).schemaVersion).toBe(2);
     expect(report.prediction).toBe(prediction);
     expect(report.prediction.score).toBe(68);
     expect(report.dossier?.actionPlan).toHaveLength(4);
     expect(report.dossier?.researchSources[0].url).toContain("ycombinator.com/companies/peer");
+    expect(report.dossier?.comparisonMatrix[0]).toMatchObject({
+      product: "Peer automates operations reconciliation for finance teams.",
+      customer: "Business teams",
+    });
+    expect(report.dossier?.comparisonMatrix[0].businessModel).toContain("SaaS, Fintech");
+    expect(report.dossier?.comparisonMatrix[0].businessModel).not.toContain("Not established in the public dataset");
+  });
+
+  it("adds stored YC dataset evidence only when Firecrawl has no source for a comparable", () => {
+    const evidence = [{ companyId: 1, longDescription: "Peer automates operations reconciliation.", tags: ["SaaS"] }];
+    const fallback = buildYcDatasetResearchFallback({
+      companies: [company],
+      evidence,
+      externalSources: [],
+      accessedAt: "2026-07-21T00:00:00.000Z",
+    });
+    expect(fallback.sources).toEqual([expect.objectContaining({ id: "yc-1", companyId: 1, sourceType: "yc-profile" })]);
+    expect(fallback.materials[0].content).toContain("Long description: Peer automates operations reconciliation.");
+    expect(fallback.materials[0].content).toContain("Tags: SaaS");
+    expect(fallback.materials[0].content).toContain("does not establish pricing or revenue model, traction metrics, or founder biographies");
+
+    const covered = buildYcDatasetResearchFallback({
+      companies: [company],
+      evidence,
+      externalSources: [{ id: "S01", companyId: 1, title: "Peer", url: "https://peer.example", sourceType: "company-website", publishedAt: null, accessedAt: "2026-07-21T00:00:00.000Z" }],
+    });
+    expect(covered).toEqual({ sources: [], materials: [] });
   });
 });

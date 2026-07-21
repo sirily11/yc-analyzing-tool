@@ -120,7 +120,7 @@ export async function createReport(input: { userId: string; chatId: string; sour
 
 export async function completeReport(input: { id: string; userId: string; profile: ApplicationProfile; prediction: PredictionResult; document: ReportDocument }) {
   const updated = await db.update(reports)
-    .set({ status: "complete", profile: input.profile, prediction: input.prediction, document: input.document, failureCode: null, updatedAt: new Date() })
+    .set({ status: "complete", title: input.document.title, profile: input.profile, prediction: input.prediction, document: input.document, failureCode: null, updatedAt: new Date() })
     .where(and(eq(reports.id, input.id), eq(reports.userId, input.userId), eq(reports.status, "drafting")))
     .returning({ id: reports.id });
   return updated[0] ?? null;

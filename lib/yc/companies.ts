@@ -4,7 +4,7 @@ import type { Client, InStatement, ResultSet, Row, Value } from "@libsql/client"
 import { embed } from "ai";
 import { z } from "zod";
 import { client } from "@/lib/db";
-import type { DatasetManifest, YcCompany } from "@/lib/types/company";
+import type { DatasetManifest, YcCompany, YcCompanyDatasetEvidence } from "@/lib/types/company";
 import { YC_EMBEDDING_DIMENSIONS, YC_EMBEDDING_MODEL, validateYcEmbedding } from "@/lib/yc/embedding";
 import { gatewayProviderOptions, normalizeEmbeddingUsage, recordAiUsage, type MeteringContext } from "@/lib/billing/usage";
 
@@ -325,4 +325,21 @@ export async function getYcCompaniesByIds(rawIds: number[], options?: YcCompanyQ
   } satisfies Exclude<InStatement, string>);
   const companies = result.rows.map(companyFromRow);
   return resolveExactYcCompanies(companies, ids);
+}
+
+export async function getYcCompanyDatasetEvidenceByIds(rawIds: number[], options?: YcCompanyQueryOptions): Promise<YcCompanyDatasetEvidence[]> {
+  const ids = [...new Set(exactCompanyIdsSchema.parse(rawIds))];
+  const result = await executor(options).execute({
+    sql: `SELECT id, long_description, tags FROM yc_companies WHERE id IN (${placeholders(ids)})`,
+    args: ids,
+  } satisfies Exclude<InStatement, string>);
+  const evidenceById = new Map(result.rows.map((row) => {
+    const companyId = requiredNumber(row, "id");
+    return [companyId, {
+      companyId,
+      longDescription: requiredString(row, "long_description"),
+      tags: stringArray(row.tags, "tags"),
+    }] as const;
+  }));
+  return ids.flatMap((id) => evidenceById.get(id) ?? []);
 }
