@@ -6,6 +6,7 @@ vi.mock("server-only", () => ({}));
 describe("prepaid credit accounting", () => {
   let repository: typeof import("@/lib/billing/repository");
   let client: typeof import("@/lib/db")["client"];
+  let database: typeof import("@/lib/db")["db"];
   const databasePath = `/tmp/application-signal-billing-${process.pid}-${crypto.randomUUID()}.db`;
 
   beforeAll(async () => {
@@ -15,7 +16,9 @@ describe("prepaid credit accounting", () => {
     process.env.REPORT_FEE_POINTS = "100";
     process.env.TURSO_DATABASE_URL = `file:${databasePath}`;
     vi.resetModules();
-    ({ client } = await import("@/lib/db"));
+    const databaseModule = await import("@/lib/db");
+    client = databaseModule.client;
+    database = databaseModule.db;
     for (const file of ["0005_mighty_bastion.sql", "0006_nervous_wolfpack.sql"]) {
       const migration = await readFile(new URL(`../drizzle/${file}`, import.meta.url), "utf8");
       await client.executeMultiple(migration.replaceAll("--> statement-breakpoint", ""));
@@ -174,5 +177,64 @@ describe("prepaid credit accounting", () => {
 
     expect(later?.status).toBe("needs_review");
     expect((await repository.getBillingSummary("user-4")).reservedPoints).toBe(200);
+  });
+
+  it("limits credit previews and server-paginates full paid histories", async () => {
+    const userId = "user-history";
+    const { billingTopups, pointsLedger } = await import("@/lib/db/schema");
+    await repository.ensureBillingAccount(userId);
+    const baseTime = Date.now() + 1_000;
+
+    await database.insert(pointsLedger).values(Array.from({ length: 25 }, (_, index) => ({
+      id: `ledger-history-${index.toString().padStart(2, "0")}`,
+      userId,
+      kind: "provider_usage" as const,
+      pointsDelta: -(index + 1),
+      balanceAfter: 200 - index - 1,
+      description: `Usage ${index + 1}`,
+      referenceId: null,
+      idempotencyKey: `ledger-history-${index}`,
+      createdAt: new Date(baseTime + index),
+    })));
+    await database.insert(billingTopups).values([
+      ...Array.from({ length: 25 }, (_, index) => ({
+        id: `topup-paid-${index.toString().padStart(2, "0")}`,
+        userId,
+        packId: "points_1000",
+        points: 1_000,
+        amountCents: 129,
+        currency: "usd",
+        status: "paid" as const,
+        createdAt: new Date(baseTime + index),
+        updatedAt: new Date(baseTime + index),
+        paidAt: new Date(baseTime + index),
+      })),
+      ...Array.from({ length: 3 }, (_, index) => ({
+        id: `topup-pending-${index}`,
+        userId,
+        packId: "points_1000",
+        points: 1_000,
+        amountCents: 129,
+        currency: "usd",
+        status: "pending" as const,
+        createdAt: new Date(baseTime + 100 + index),
+        updatedAt: new Date(baseTime + 100 + index),
+        paidAt: null,
+      })),
+    ]);
+
+    const summary = await repository.getBillingSummary(userId);
+    expect(summary.ledger).toHaveLength(10);
+    expect(summary.topups).toHaveLength(10);
+    expect(summary.topups.every((topup) => topup.status === "paid")).toBe(true);
+
+    const pointsPage = await repository.getPointHistory(userId, 2);
+    expect(pointsPage).toMatchObject({ total: 26, currentPage: 2, pageCount: 2 });
+    expect(pointsPage.entries).toHaveLength(6);
+
+    const invoicePage = await repository.getInvoiceHistory(userId, 2);
+    expect(invoicePage).toMatchObject({ total: 25, currentPage: 2, pageCount: 2 });
+    expect(invoicePage.invoices).toHaveLength(5);
+    expect(invoicePage.invoices.every((invoice) => invoice.status === "paid")).toBe(true);
   });
 });

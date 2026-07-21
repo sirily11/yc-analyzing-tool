@@ -150,6 +150,7 @@ export function ChatHistory({ chats }: { chats: HistoryChat[] }) {
               openMenu(chat, bounds.left + 20, bounds.top + bounds.height / 2);
             }}
             aria-haspopup="menu"
+            aria-current={pathname === `/chat/${chat.id}` ? "page" : undefined}
           >
             <MessageSquareText size={13} />
             <span>{chat.title}</span>
