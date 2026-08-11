@@ -241,7 +241,10 @@ a { color: inherit; text-decoration: none; }
 .growth-table thead th, .growth-table tbody th { text-align: left; font-weight: 600; }
 .growth-table thead th { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .growth-note { margin: 14px 0 0; font-size: 11px; line-height: 1.6; color: var(--muted); }
-.growth-additions { min-width: 0; padding: 18px; }
+/* height:0 + min-height:100% keeps the aside out of the grid row's sizing, so the row is set by the
+   chart panel alone and a longer list scrolls inside instead of growing the section. */
+.growth-additions { min-width: 0; padding: 18px; display: flex; flex-direction: column; height: 0; min-height: 100%; }
+.growth-additions .company-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .growth-additions .company-row { grid-template-columns: 30px minmax(0,1fr); }
 .addition-meta { font-family: var(--mono); font-size: 9px; letter-spacing: .03em; }
 .growth-empty { font-size: 12px; color: var(--muted); margin: 12px 0; }
@@ -1042,6 +1045,9 @@ textarea.question-free-form { display: block; min-height: 96px; resize: vertical
   .growth-intro { grid-template-columns: 1fr; gap: 26px; align-items: start; }
   .growth-body { grid-template-columns: 1fr; }
   .growth-chart-panel { border-right: 0; border-bottom: 1px solid var(--line); }
+  /* Stacked: no chart panel beside it to set the height, so cap the scroll area directly. */
+  .growth-additions { height: auto; min-height: 0; }
+  .growth-additions .company-list { max-height: 60vh; }
 }
 @media (max-width: 760px) {
   .topbar { padding: 0 16px; height: 60px; }
