@@ -10,6 +10,7 @@
 - `scripts/` contains data preparation and model release utilities.
 - `config.ts` is the source of truth for the active model version and public model archive URL.
 - Turso is the runtime source of truth for the YC directory; `public/data/yc-companies.json` is an ignored offline export only.
+- `data/` holds the committed YC batch-growth timeseries. It is tracked in Git on purpose and is unrelated to the ignored `public/data/` export.
 
 ## Development commands
 

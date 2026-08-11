@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Mail } from "lucide-react";
+import { BatchGrowthSection } from "@/components/batch-growth-section";
 import { PublicExplorer } from "@/components/public-explorer";
 import { SiteHeader } from "@/components/site-header";
 
@@ -8,6 +9,7 @@ export default function HomePage() {
     <main className="site-shell">
       <SiteHeader />
       <PublicExplorer />
+      <BatchGrowthSection />
       <section className="methodology" id="methodology">
         <div><p className="eyebrow">How to read this</p><h2>Each dot is a company. Every score is a comparison—not a verdict.</h2></div>
         <div className="methodology-copy">
@@ -29,7 +31,7 @@ export default function HomePage() {
           </a>
         </div>
       </section>
-      <footer className="footer"><span>Application Signal · Independent directory analysis</span><span>Source: YC public directory mirror · Synced from Turso</span></footer>
+      <footer className="footer"><span>Application Signal · Independent directory analysis</span><span>Source: YC public directory mirror · Synced from Turso · Batch ramps from the yc-oss/api commit history</span></footer>
     </main>
   );
 }
