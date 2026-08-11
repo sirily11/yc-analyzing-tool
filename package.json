@@ -17,6 +17,8 @@
     "yc:export": "bun run scripts/export-yc-data.ts",
     "yc:seed": "bun run scripts/seed-yc-data.ts",
     "yc:sync": "bun run scripts/seed-yc-data.ts --sync",
+    "yc:growth": "bun run scripts/update-batch-growth.ts",
+    "yc:growth:backfill": "bun run scripts/update-batch-growth.ts --backfill",
     "model:categorize": "bun run scripts/categorize-yc-data.ts",
     "model:founders": "bun run scripts/enrich-yc-founders.ts",
     "model:train": "ml/.venv/bin/python ml/train.py",
