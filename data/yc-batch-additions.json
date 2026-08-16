@@ -4,8 +4,9 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-08-15",
+  "lastDate": "2026-08-16",
   "days": [
+    {"date":"2026-08-16","added":4,"removed":0,"updated":26,"total":6179},
     {"date":"2026-08-15","added":7,"removed":0,"updated":37,"total":6175},
     {"date":"2026-08-14","added":12,"removed":0,"updated":51,"total":6168},
     {"date":"2026-08-13","added":6,"removed":1,"updated":43,"total":6156},
@@ -55,6 +56,10 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":32159,"name":"Kandor","slug":"kandor","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Making health insurance invisible","industry":"Healthcare","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://kandorlabs.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/e3c84e687ef66f3a25dabe4c8ed464f0c19e8040.png","url":"https://www.ycombinator.com/companies/kandor","addedOn":"2026-08-16"},
+    {"id":33804,"name":"Lightfield","slug":"lightfield","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI legal intake & triage for in-house teams","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://trylightfield.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/a5892847938d97ba24dce5c43342e5a6f22a2f34.png","url":"https://www.ycombinator.com/companies/lightfield","addedOn":"2026-08-16"},
+    {"id":32228,"name":"Standard Medical","slug":"standard-medical","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"A primary care clinic where AI earns clinical autonomy","industry":"Healthcare","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://standardmedical.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/390777dec2649a1274798e8d8b3900081aeaadad.png","url":"https://www.ycombinator.com/companies/standard-medical","addedOn":"2026-08-16"},
+    {"id":33319,"name":"Vernius Systems, Inc.","slug":"vernius-systems-inc","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Autonomous radar guidance for interceptors","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://www.vernius.systems","logo":"https://bookface-images.s3.amazonaws.com/small_logos/b6b4e6b2f945df4b3400a22fc1d287a788bc4215.png","url":"https://www.ycombinator.com/companies/vernius-systems-inc","addedOn":"2026-08-16"},
     {"id":32161,"name":"Bernard","slug":"bernard","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"AI employees that run home appliance repair companies","industry":"B2B","location":"New York City, NY, USA","teamSize":9,"status":"Active","website":"https://bernardhq.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/86e6151a4772f82f25d8581efbda66f538ce4bed.png","url":"https://www.ycombinator.com/companies/bernard","addedOn":"2026-08-15"},
     {"id":33345,"name":"CueBench","slug":"cuebench","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"RL Environments for Scientific Reasoning & Performance Engineering","industry":"B2B","location":"San Francisco, CA, USA","teamSize":0,"status":"Active","website":null,"logo":"https://bookface-images.s3.amazonaws.com/small_logos/e7132e84c8b27f087db6e6d8e58db3f856fb87d6.png","url":"https://www.ycombinator.com/companies/cuebench","addedOn":"2026-08-15"},
     {"id":32191,"name":"Lyon","slug":"lyon","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Foundation models on enterprise transaction data.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://lyon.so","logo":"https://bookface-images.s3.amazonaws.com/small_logos/27ce3fff3af03da64bc8cfefeb3efef7b6d080b7.png","url":"https://www.ycombinator.com/companies/lyon","addedOn":"2026-08-15"},
