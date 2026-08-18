@@ -4,8 +4,10 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-08-16",
+  "lastDate": "2026-08-18",
   "days": [
+    {"date":"2026-08-18","added":1,"removed":0,"updated":49,"total":6180},
+    {"date":"2026-08-17","added":3,"removed":3,"updated":36,"total":6179},
     {"date":"2026-08-16","added":4,"removed":0,"updated":26,"total":6179},
     {"date":"2026-08-15","added":7,"removed":0,"updated":37,"total":6175},
     {"date":"2026-08-14","added":12,"removed":0,"updated":51,"total":6168},
@@ -56,6 +58,10 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":31232,"name":"Remy AI","slug":"remy-ai","batch":"Winter 2026","batchKey":"winter-2026","oneLiner":"Automating dexterous tasks in warehouses with AI-powered robots","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://www.tryremy.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/94f9d60cdf58d3c7fc724152a315ad834ec78eec.png","url":"https://www.ycombinator.com/companies/remy-ai","addedOn":"2026-08-18"},
+    {"id":32584,"name":"Aerogen Systems","slug":"aerogen-systems","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Building the future of advanced chip manufacturing.","industry":"Industrials","location":"Ann Arbor, MI, USA","teamSize":4,"status":"Active","website":"https://www.aerogensystems.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/235b4dc8ef4a94e38d79ce892c9d55184a2b0224.png","url":"https://www.ycombinator.com/companies/aerogen-systems","addedOn":"2026-08-17"},
+    {"id":36348,"name":"antimattr","slug":"antimattr","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"voice-first hardware interface for human-agent interaction","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://antimattr.one/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/3266646a9815f7e3ed31c088c4008df6e8fb0101.png","url":"https://www.ycombinator.com/companies/antimattr","addedOn":"2026-08-17"},
+    {"id":34761,"name":"Veeza AI","slug":"veeza-ai","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI travel agent for people with weak passports, starting with visas.","industry":"Consumer","location":"","teamSize":1,"status":"Active","website":"https://veeza.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/1ff98253605935aaa53bb31e8330be6a74309c6d.png","url":"https://www.ycombinator.com/companies/veeza-ai","addedOn":"2026-08-17"},
     {"id":32159,"name":"Kandor","slug":"kandor","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Making health insurance invisible","industry":"Healthcare","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://kandorlabs.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/e3c84e687ef66f3a25dabe4c8ed464f0c19e8040.png","url":"https://www.ycombinator.com/companies/kandor","addedOn":"2026-08-16"},
     {"id":33804,"name":"Lightfield","slug":"lightfield","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI legal intake & triage for in-house teams","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://trylightfield.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/a5892847938d97ba24dce5c43342e5a6f22a2f34.png","url":"https://www.ycombinator.com/companies/lightfield","addedOn":"2026-08-16"},
     {"id":32228,"name":"Standard Medical","slug":"standard-medical","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"A primary care clinic where AI earns clinical autonomy","industry":"Healthcare","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://standardmedical.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/390777dec2649a1274798e8d8b3900081aeaadad.png","url":"https://www.ycombinator.com/companies/standard-medical","addedOn":"2026-08-16"},
