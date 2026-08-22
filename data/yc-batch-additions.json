@@ -4,8 +4,9 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-08-21",
+  "lastDate": "2026-08-22",
   "days": [
+    {"date":"2026-08-22","added":2,"removed":0,"updated":52,"total":6189},
     {"date":"2026-08-21","added":1,"removed":3,"updated":53,"total":6187},
     {"date":"2026-08-20","added":3,"removed":0,"updated":54,"total":6189},
     {"date":"2026-08-19","added":6,"removed":0,"updated":56,"total":6186},
@@ -61,6 +62,8 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":36084,"name":"Covera","slug":"covera","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI-native OS for insurance brokers","industry":"Fintech","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://www.covera-agents.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/e711e58f600a9ea3c53a45d934c825989e9b5b57.png","url":"https://www.ycombinator.com/companies/covera","addedOn":"2026-08-22"},
+    {"id":31582,"name":"Edgerun","slug":"edgerun","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Military exoskeletons","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":8,"status":"Active","website":"https://edgerun.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/8fb84bc8b7f8d02b776dec7685bbaf102fdadf1c.png","url":"https://www.ycombinator.com/companies/edgerun","addedOn":"2026-08-22"},
     {"id":35290,"name":"Antropi Robotics","slug":"antropi-robotics","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Autonomous CNC factories for faster hardware","industry":"Industrials","location":"Bengaluru, KA, India","teamSize":0,"status":"Active","website":"https://www.antropi.world/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/b8c101f20a3b29a6ae368d81297168e49391e75a.png","url":"https://www.ycombinator.com/companies/antropi-robotics","addedOn":"2026-08-21"},
     {"id":33441,"name":"Allia Health","slug":"allia-health","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Clinically Integrated Group for Mental Health","industry":"Healthcare","location":"New York City, NY, USA","teamSize":3,"status":"Active","website":"https://allia.health/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/3d6f40f216c0da6b1f8b4caa594f59a5b194dd82.png","url":"https://www.ycombinator.com/companies/allia-health","addedOn":"2026-08-20"},
     {"id":35058,"name":"Capveon","slug":"capveon","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"We help municipal government contractors win more work","industry":"Government","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://capveon.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/55acb7275a696cdf957737bce96b338f2da2d45f.png","url":"https://www.ycombinator.com/companies/capveon","addedOn":"2026-08-20"},
