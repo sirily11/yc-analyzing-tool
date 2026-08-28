@@ -4,8 +4,9 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-08-26",
+  "lastDate": "2026-08-27",
   "days": [
+    {"date":"2026-08-27","added":3,"removed":0,"updated":59,"total":6194},
     {"date":"2026-08-26","added":1,"removed":1,"updated":40,"total":6191},
     {"date":"2026-08-25","added":1,"removed":1,"updated":46,"total":6191},
     {"date":"2026-08-24","added":1,"removed":0,"updated":33,"total":6191},
@@ -66,6 +67,9 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":36940,"name":"Quippy","slug":"quippy","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Helps build social skills through daily practice","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://quippyapp.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/97c02b937035318f812614d4d9362e5c060a6f72.png","url":"https://www.ycombinator.com/companies/quippy","addedOn":"2026-08-27"},
+    {"id":37600,"name":"Redoubt Insurance","slug":"redoubt-insurance","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Commercial insurance agency for small businesses","industry":"Fintech","location":"","teamSize":0,"status":"Active","website":"https://www.redoubt.agency","logo":"https://bookface-images.s3.amazonaws.com/small_logos/1d9f15d9866298e7635c4be5e45af4cd0cf8b920.png","url":"https://www.ycombinator.com/companies/redoubt-insurance","addedOn":"2026-08-27"},
+    {"id":35128,"name":"Talos","slug":"talos-us","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Predictive maintenance for power infrastructure.","industry":"Industrials","location":"Baltimore, MD, USA","teamSize":3,"status":"Active","website":"https://www.talos-us.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/adf2f2d3e67de554b1df8a77cdc1d6dd943928ec.png","url":"https://www.ycombinator.com/companies/talos-us","addedOn":"2026-08-27"},
     {"id":33804,"name":"Lightfield","slug":"lightfield","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI that works for in-house legal teams","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://trylightfield.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/a5892847938d97ba24dce5c43342e5a6f22a2f34.png","url":"https://www.ycombinator.com/companies/lightfield","addedOn":"2026-08-26"},
     {"id":34597,"name":"Sentient OS","slug":"sentient-os","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"On-device AI that knows your entire life and does your work overnight.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://sentient-os.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/597c9491c6951c83af2828c9a596ca67477a0157.png","url":"https://www.ycombinator.com/companies/sentient-os","addedOn":"2026-08-25"},
     {"id":33312,"name":"Ethos Space Resources","slug":"ethos-space-resources","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"We make Silicon on the Moon.","industry":"Industrials","location":"Los Angeles, CA, USA","teamSize":2,"status":"Active","website":"https://ethos-space.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/26c677c7621160c55e8011d6851971173fe4f8e9.png","url":"https://www.ycombinator.com/companies/ethos-space-resources","addedOn":"2026-08-24"},
