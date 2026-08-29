@@ -2,11 +2,11 @@
   "version": 1,
   "source": "https://yc-oss.github.io/api/meta.json",
   "firstObservedDate": "2024-08-22",
-  "lastObservedDate": "2026-08-27",
+  "lastObservedDate": "2026-08-28",
   "observedRanges": [
     ["2024-08-22","2025-12-24"],
     ["2025-12-26","2026-02-08"],
-    ["2026-05-04","2026-08-27"]
+    ["2026-05-04","2026-08-28"]
   ],
   "batches": [
     {"key":"summer-2005","name":"Summer 2005","season":"summer","year":2005,"firstObservedDate":"2024-08-22","latestCount":9,"censored":true,"points":[["2024-08-22",8],["2025-10-02",9]]},
