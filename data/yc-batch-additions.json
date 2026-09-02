@@ -4,8 +4,10 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-08-31",
+  "lastDate": "2026-09-02",
   "days": [
+    {"date":"2026-09-02","added":2,"removed":1,"updated":49,"total":6201},
+    {"date":"2026-09-01","added":4,"removed":0,"updated":29,"total":6200},
     {"date":"2026-08-31","added":1,"removed":0,"updated":44,"total":6196},
     {"date":"2026-08-30","added":1,"removed":0,"updated":18,"total":6195},
     {"date":"2026-08-29","added":1,"removed":1,"updated":63,"total":6194},
@@ -71,6 +73,12 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":31367,"name":"Andustry","slug":"andustry","batch":"Spring 2026","batchKey":"spring-2026","oneLiner":"","industry":"Fintech","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"http://andustry.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/9cad618041deb29b222958392d35d6e8a7e0d845.png","url":"https://www.ycombinator.com/companies/andustry","addedOn":"2026-09-02"},
+    {"id":35525,"name":"Orca Aerospace","slug":"orca-aerospace","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI spacecraft operator that lives onboard the vehicle.","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://orcaaerospace.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/afa6ce6fe3345bb9e7b6296e9877371ada8e2155.png","url":"https://www.ycombinator.com/companies/orca-aerospace","addedOn":"2026-09-02"},
+    {"id":35261,"name":"Asakana","slug":"asakana","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI order entry for food distributors: emails and texts to ERP","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":0,"status":"Active","website":"https://www.asakana.co/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/582ebf9f01453d95f2c02b9bac341aff365af875.png","url":"https://www.ycombinator.com/companies/asakana","addedOn":"2026-09-01"},
+    {"id":34928,"name":"Ascii","slug":"ascii","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"The best cloud VMs for billions of agents","industry":"B2B","location":"Remote","teamSize":3,"status":"Active","website":"https://box.ascii.dev","logo":"https://bookface-images.s3.amazonaws.com/small_logos/7ab4963f9bacc76a0a31b94f8773cad5138d2dc3.png","url":"https://www.ycombinator.com/companies/ascii","addedOn":"2026-09-01"},
+    {"id":30923,"name":"Frontier Computing","slug":"frontier-computing","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Frontier grows scalable biological brains as an ML training substrate","industry":"Industrials","location":"London, England, United Kingdom","teamSize":1,"status":"Active","website":"https://frontier.site","logo":"https://bookface-images.s3.amazonaws.com/small_logos/a10237e5548f0937c67885cb916abadcaa74cc08.png","url":"https://www.ycombinator.com/companies/frontier-computing","addedOn":"2026-09-01"},
+    {"id":38061,"name":"Maritime","slug":"maritime","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"The managed cloud for AI agents.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://maritime.sh/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/d8ff801ef7e9094077a292c8bed3e86ce7e01f00.png","url":"https://www.ycombinator.com/companies/maritime","addedOn":"2026-09-01"},
     {"id":35257,"name":"Nodus","slug":"nodus","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Intelligent execution layer for AI workloads","industry":"B2B","location":"","teamSize":2,"status":"Active","website":"https://nodus-swart.vercel.app/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/cf5d37476e8f7b170957ddb85fd0254d52fa2634.png","url":"https://www.ycombinator.com/companies/nodus","addedOn":"2026-08-31"},
     {"id":37272,"name":"The Subvocal Company","slug":"the-subvocal-company","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Talk to your computer without talking","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://subvocal.company","logo":"https://bookface-images.s3.amazonaws.com/small_logos/cacc4ab40596ece6b5c77c3f350ee25ddf5cb079.png","url":"https://www.ycombinator.com/companies/the-subvocal-company","addedOn":"2026-08-30"},
     {"id":35395,"name":"Workers IO","slug":"workers-io","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Deterministic Virtual Machines","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://workers.io","logo":"https://bookface-images.s3.amazonaws.com/small_logos/12ec3720a247bad2e5a39d162b68e217ed6b74bd.png","url":"https://www.ycombinator.com/companies/workers-io","addedOn":"2026-08-29"},
