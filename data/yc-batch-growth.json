@@ -2,11 +2,11 @@
   "version": 1,
   "source": "https://yc-oss.github.io/api/meta.json",
   "firstObservedDate": "2024-08-22",
-  "lastObservedDate": "2026-09-02",
+  "lastObservedDate": "2026-09-03",
   "observedRanges": [
     ["2024-08-22","2025-12-24"],
     ["2025-12-26","2026-02-08"],
-    ["2026-05-04","2026-09-02"]
+    ["2026-05-04","2026-09-03"]
   ],
   "batches": [
     {"key":"summer-2005","name":"Summer 2005","season":"summer","year":2005,"firstObservedDate":"2024-08-22","latestCount":9,"censored":true,"points":[["2024-08-22",8],["2025-10-02",9]]},
@@ -38,7 +38,7 @@
     {"key":"summer-2018","name":"Summer 2018","season":"summer","year":2018,"firstObservedDate":"2024-08-22","latestCount":131,"censored":true,"points":[["2024-08-22",132],["2024-11-25",131]]},
     {"key":"winter-2019","name":"Winter 2019","season":"winter","year":2019,"firstObservedDate":"2024-08-22","latestCount":194,"censored":true,"points":[["2024-08-22",196],["2024-11-02",195],["2024-12-16",194],["2025-04-03",195],["2026-08-13",194]]},
     {"key":"summer-2019","name":"Summer 2019","season":"summer","year":2019,"firstObservedDate":"2024-08-22","latestCount":176,"censored":true,"points":[["2024-08-22",175],["2024-12-16",177],["2024-12-23",175],["2025-02-10",174],["2025-05-06",175],["2025-06-19",176]]},
-    {"key":"winter-2020","name":"Winter 2020","season":"winter","year":2020,"firstObservedDate":"2024-08-22","latestCount":229,"censored":true,"points":[["2024-08-22",228],["2024-12-19",229],["2025-04-25",228],["2025-10-07",229]]},
+    {"key":"winter-2020","name":"Winter 2020","season":"winter","year":2020,"firstObservedDate":"2024-08-22","latestCount":228,"censored":true,"points":[["2024-08-22",228],["2024-12-19",229],["2025-04-25",228],["2025-10-07",229],["2026-09-03",228]]},
     {"key":"summer-2020","name":"Summer 2020","season":"summer","year":2020,"firstObservedDate":"2024-08-22","latestCount":209,"censored":true,"points":[["2024-08-22",207],["2024-11-20",208],["2024-12-16",216],["2024-12-23",208],["2026-08-11",209]]},
     {"key":"winter-2021","name":"Winter 2021","season":"winter","year":2021,"firstObservedDate":"2024-08-22","latestCount":336,"censored":true,"points":[["2024-08-22",337],["2024-12-23",336]]},
     {"key":"summer-2021","name":"Summer 2021","season":"summer","year":2021,"firstObservedDate":"2024-08-22","latestCount":391,"censored":true,"points":[["2024-08-22",391],["2024-10-31",392],["2024-12-14",393],["2024-12-16",394],["2024-12-23",392],["2025-01-20",391]]},
