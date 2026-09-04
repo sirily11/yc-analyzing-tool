@@ -4,8 +4,9 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-09-03",
+  "lastDate": "2026-09-04",
   "days": [
+    {"date":"2026-09-04","added":1,"removed":1,"updated":31,"total":6200},
     {"date":"2026-09-03","added":0,"removed":1,"updated":40,"total":6200},
     {"date":"2026-09-02","added":2,"removed":1,"updated":49,"total":6201},
     {"date":"2026-09-01","added":4,"removed":0,"updated":29,"total":6200},
@@ -74,6 +75,7 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":35260,"name":"OnePatch","slug":"onepatch","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Automate on-call at agent-scale.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://onepatch.dev","logo":"https://bookface-images.s3.amazonaws.com/small_logos/7832df887d718a7dbfbcec376ef2b160c31b16da.png","url":"https://www.ycombinator.com/companies/onepatch","addedOn":"2026-09-04"},
     {"id":31367,"name":"Andustry","slug":"andustry","batch":"Spring 2026","batchKey":"spring-2026","oneLiner":"","industry":"Fintech","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"http://andustry.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/9cad618041deb29b222958392d35d6e8a7e0d845.png","url":"https://www.ycombinator.com/companies/andustry","addedOn":"2026-09-02"},
     {"id":35525,"name":"Orca Aerospace","slug":"orca-aerospace","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI spacecraft operator that lives onboard the vehicle.","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://orcaaerospace.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/afa6ce6fe3345bb9e7b6296e9877371ada8e2155.png","url":"https://www.ycombinator.com/companies/orca-aerospace","addedOn":"2026-09-02"},
     {"id":35261,"name":"Asakana","slug":"asakana","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI order entry for food distributors: emails and texts to ERP","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":0,"status":"Active","website":"https://www.asakana.co/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/582ebf9f01453d95f2c02b9bac341aff365af875.png","url":"https://www.ycombinator.com/companies/asakana","addedOn":"2026-09-01"},
