@@ -4,8 +4,9 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-09-05",
+  "lastDate": "2026-09-06",
   "days": [
+    {"date":"2026-09-06","added":1,"removed":0,"updated":36,"total":6203},
     {"date":"2026-09-05","added":2,"removed":0,"updated":42,"total":6202},
     {"date":"2026-09-04","added":1,"removed":1,"updated":31,"total":6200},
     {"date":"2026-09-03","added":0,"removed":1,"updated":40,"total":6200},
@@ -76,6 +77,7 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":35850,"name":"Dreamscale Labs","slug":"dreamscale-labs","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Running robot brains in the cloud","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":4,"status":"Active","website":"https://dreamscalelabs.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/1a1d1aaa10413e5d45ca3d2aefe2fb4b682e7fb4.png","url":"https://www.ycombinator.com/companies/dreamscale-labs","addedOn":"2026-09-06"},
     {"id":35265,"name":"Hopper","slug":"hopper","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Fast inference for voice","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://withhopper.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/6640b732eb4efe17f2fb11ff75f6f6bc14184872.png","url":"https://www.ycombinator.com/companies/hopper","addedOn":"2026-09-05"},
     {"id":36708,"name":"Sinter","slug":"sinter-systems","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Accelerating scaled plastics with additive technologies","industry":"Industrials","location":"El Segundo, CA, USA","teamSize":2,"status":"Active","website":"https://sinter.systems","logo":"https://bookface-images.s3.amazonaws.com/small_logos/392a3938deea813eb9351409e9ac2cd528e737d7.png","url":"https://www.ycombinator.com/companies/sinter-systems","addedOn":"2026-09-05"},
     {"id":35260,"name":"OnePatch","slug":"onepatch","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Automate on-call at agent-scale.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://onepatch.dev","logo":"https://bookface-images.s3.amazonaws.com/small_logos/7832df887d718a7dbfbcec376ef2b160c31b16da.png","url":"https://www.ycombinator.com/companies/onepatch","addedOn":"2026-09-04"},
