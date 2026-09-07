@@ -4,8 +4,9 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-09-06",
+  "lastDate": "2026-09-07",
   "days": [
+    {"date":"2026-09-07","added":0,"removed":0,"updated":92,"total":6203},
     {"date":"2026-09-06","added":1,"removed":0,"updated":36,"total":6203},
     {"date":"2026-09-05","added":2,"removed":0,"updated":42,"total":6202},
     {"date":"2026-09-04","added":1,"removed":1,"updated":31,"total":6200},
