@@ -4,8 +4,9 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-09-07",
+  "lastDate": "2026-09-08",
   "days": [
+    {"date":"2026-09-08","added":2,"removed":1,"updated":56,"total":6204},
     {"date":"2026-09-07","added":0,"removed":0,"updated":92,"total":6203},
     {"date":"2026-09-06","added":1,"removed":0,"updated":36,"total":6203},
     {"date":"2026-09-05","added":2,"removed":0,"updated":42,"total":6202},
@@ -78,6 +79,8 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":35883,"name":"Halmos Labs","slug":"halmos-labs","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Maximum information per experiment, minimum experiments per conclusion","industry":"Healthcare","location":"Lund, Skåne County, Sweden","teamSize":3,"status":"Active","website":"https://halmoslabs.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/093fdc6d2122e7140cab391f450941fd3922b145.png","url":"https://www.ycombinator.com/companies/halmos-labs","addedOn":"2026-09-08"},
+    {"id":36086,"name":"Hesper AI","slug":"hesper-ai","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI Claims Investigator for Insurance","industry":"Fintech","location":"New York City, NY, USA","teamSize":2,"status":"Active","website":"https://gethesperai.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/22aa0e43c8572c7233989f7b9c4d18841280c577.png","url":"https://www.ycombinator.com/companies/hesper-ai","addedOn":"2026-09-08"},
     {"id":35850,"name":"Dreamscale Labs","slug":"dreamscale-labs","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Running robot brains in the cloud","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":4,"status":"Active","website":"https://dreamscalelabs.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/1a1d1aaa10413e5d45ca3d2aefe2fb4b682e7fb4.png","url":"https://www.ycombinator.com/companies/dreamscale-labs","addedOn":"2026-09-06"},
     {"id":35265,"name":"Hopper","slug":"hopper","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Fast inference for voice","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://withhopper.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/6640b732eb4efe17f2fb11ff75f6f6bc14184872.png","url":"https://www.ycombinator.com/companies/hopper","addedOn":"2026-09-05"},
     {"id":36708,"name":"Sinter","slug":"sinter-systems","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Accelerating scaled plastics with additive technologies","industry":"Industrials","location":"El Segundo, CA, USA","teamSize":2,"status":"Active","website":"https://sinter.systems","logo":"https://bookface-images.s3.amazonaws.com/small_logos/392a3938deea813eb9351409e9ac2cd528e737d7.png","url":"https://www.ycombinator.com/companies/sinter-systems","addedOn":"2026-09-05"},
