@@ -4,8 +4,9 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-09-12",
+  "lastDate": "2026-09-13",
   "days": [
+    {"date":"2026-09-13","added":2,"removed":0,"updated":11,"total":6216},
     {"date":"2026-09-12","added":2,"removed":0,"updated":52,"total":6214},
     {"date":"2026-09-11","added":3,"removed":0,"updated":63,"total":6212},
     {"date":"2026-09-10","added":5,"removed":0,"updated":50,"total":6209},
@@ -83,6 +84,8 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":34895,"name":"Sigma","slug":"sigma-2","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI Operating System for Mergers & Acquisitions","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":null,"logo":"https://bookface-images.s3.amazonaws.com/small_logos/0281f5236edcd7fb1960cb57da29592acd65e490.png","url":"https://www.ycombinator.com/companies/sigma-2","addedOn":"2026-09-13"},
+    {"id":37105,"name":"Tilion","slug":"tilion","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Super fast, unblockable browser infra for agents","industry":"B2B","location":"San Francisco, CA, USA","teamSize":4,"status":"Active","website":"https://tilion.dev","logo":"https://bookface-images.s3.amazonaws.com/small_logos/119cb04a763e823c00332f94249a1f95dc277724.png","url":"https://www.ycombinator.com/companies/tilion","addedOn":"2026-09-13"},
     {"id":35224,"name":"Micora","slug":"micora","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Solar farm in a box built anywhere in days","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://micora.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/7fc1316658ceceb944d2c372912cac6b6db9e5ec.png","url":"https://www.ycombinator.com/companies/micora","addedOn":"2026-09-12"},
     {"id":36411,"name":"Vyra","slug":"vyra","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Autonomous video editing for non-editors. Instead of making users…","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://usevyra.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/7ad073b0df3558383dd73b1125d5e326d63c3e12.png","url":"https://www.ycombinator.com/companies/vyra","addedOn":"2026-09-12"},
     {"id":38127,"name":"DeepMark","slug":"deepmark","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"A live watermark inside AI voice that survives phone calls","industry":"B2B","location":"San Francisco, CA, USA","teamSize":5,"status":"Active","website":"https://www.deepmark.me","logo":"https://bookface-images.s3.amazonaws.com/small_logos/c443c87dd89559f3656ebd3f92b941ded93ff4dd.png","url":"https://www.ycombinator.com/companies/deepmark","addedOn":"2026-09-11"},
