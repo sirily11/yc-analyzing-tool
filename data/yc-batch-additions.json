@@ -4,8 +4,9 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-09-15",
+  "lastDate": "2026-09-16",
   "days": [
+    {"date":"2026-09-16","added":1,"removed":0,"updated":45,"total":6221},
     {"date":"2026-09-15","added":5,"removed":0,"updated":39,"total":6220},
     {"date":"2026-09-14","added":0,"removed":1,"updated":29,"total":6215},
     {"date":"2026-09-13","added":2,"removed":0,"updated":11,"total":6216},
@@ -86,6 +87,7 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":31572,"name":"gbrain.io","slug":"gbrainio","batch":"Spring 2026","batchKey":"spring-2026","oneLiner":"A personal or team assistant that works while you sleep","industry":"B2B","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://gbrain.io","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ff8cf14993c5561f746df91370537e12f858f957.png","url":"https://www.ycombinator.com/companies/gbrainio","addedOn":"2026-09-16"},
     {"id":34893,"name":"Agent 37","slug":"agent-37","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Persistent sandboxes for agents like hermes, openclaw, claude code","industry":"B2B","location":"New York City, NY, USA","teamSize":0,"status":"Active","website":"https://www.agent37.com/cloud","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ab818d15979a4594472be995a13a8be6107d4517.png","url":"https://www.ycombinator.com/companies/agent-37","addedOn":"2026-09-15"},
     {"id":35093,"name":"Aviern","slug":"aviern","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Unmanned airplanes for geospatial intelligence","industry":"Industrials","location":"Los Angeles, CA, USA","teamSize":4,"status":"Active","website":"https://aviern.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/906b7c01faee6d9632f1f941bfe737812ec7d0b9.png","url":"https://www.ycombinator.com/companies/aviern","addedOn":"2026-09-15"},
     {"id":36015,"name":"Ignition Benefits","slug":"ignition-benefits","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"The AI-Native Benefits Brokerage","industry":"Fintech","location":"Los Angeles, CA, USA","teamSize":8,"status":"Active","website":"https://www.ignitionbenefits.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/14580e0fabb4e383e5286e8af972648e4bc2b5af.png","url":"https://www.ycombinator.com/companies/ignition-benefits","addedOn":"2026-09-15"},
