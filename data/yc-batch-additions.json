@@ -4,8 +4,9 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-09-16",
+  "lastDate": "2026-09-17",
   "days": [
+    {"date":"2026-09-17","added":4,"removed":0,"updated":49,"total":6225},
     {"date":"2026-09-16","added":1,"removed":0,"updated":45,"total":6221},
     {"date":"2026-09-15","added":5,"removed":0,"updated":39,"total":6220},
     {"date":"2026-09-14","added":0,"removed":1,"updated":29,"total":6215},
@@ -87,6 +88,10 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":31725,"name":"Hickory & Company","slug":"hickory-and-company","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Hickory offers agentic compliance and BSA for banks and fintechs","industry":"B2B","location":"Salt Lake City, UT, USA","teamSize":3,"status":"Active","website":"https://hickory.co","logo":"https://bookface-images.s3.amazonaws.com/small_logos/99defc038609729a80c544eca98af6bec719647d.png","url":"https://www.ycombinator.com/companies/hickory-and-company","addedOn":"2026-09-17"},
+    {"id":37601,"name":"Lark","slug":"lark-2","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Lark - Specialized agents for wholesale distributors","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://trylark.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/1fa063810ecce7347eb451a813a33fc49dd7242c.png","url":"https://www.ycombinator.com/companies/lark-2","addedOn":"2026-09-17"},
+    {"id":36906,"name":"Memorable","slug":"memorable","batch":"Summer 2027","batchKey":"summer-2027","oneLiner":"Self-evolving workflows for AI agents","industry":"B2B","location":"San Francisco, CA, USA; Remote","teamSize":2,"status":"Active","website":"https://www.memorable.sh/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/044e23bebf5afa8daf2de443d127002bbc57895a.png","url":"https://www.ycombinator.com/companies/memorable","addedOn":"2026-09-17"},
+    {"id":36741,"name":"Perit.AI","slug":"peritai","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Expert-led data and RL platform for AI labs","industry":"B2B","location":"San Francisco, CA, USA","teamSize":47,"status":"Active","website":"https://www.perit.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/a35e9e2f6026717a2640d1e01b9215eaff2d4310.png","url":"https://www.ycombinator.com/companies/peritai","addedOn":"2026-09-17"},
     {"id":31572,"name":"gbrain.io","slug":"gbrainio","batch":"Spring 2026","batchKey":"spring-2026","oneLiner":"A personal or team assistant that works while you sleep","industry":"B2B","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://gbrain.io","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ff8cf14993c5561f746df91370537e12f858f957.png","url":"https://www.ycombinator.com/companies/gbrainio","addedOn":"2026-09-16"},
     {"id":34893,"name":"Agent 37","slug":"agent-37","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Persistent sandboxes for agents like hermes, openclaw, claude code","industry":"B2B","location":"New York City, NY, USA","teamSize":0,"status":"Active","website":"https://www.agent37.com/cloud","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ab818d15979a4594472be995a13a8be6107d4517.png","url":"https://www.ycombinator.com/companies/agent-37","addedOn":"2026-09-15"},
     {"id":35093,"name":"Aviern","slug":"aviern","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Unmanned airplanes for geospatial intelligence","industry":"Industrials","location":"Los Angeles, CA, USA","teamSize":4,"status":"Active","website":"https://aviern.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/906b7c01faee6d9632f1f941bfe737812ec7d0b9.png","url":"https://www.ycombinator.com/companies/aviern","addedOn":"2026-09-15"},
