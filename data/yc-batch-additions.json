@@ -4,8 +4,11 @@
   "windowDays": 90,
   "maxEntries": 400,
   "firstDate": "2026-06-30",
-  "lastDate": "2026-09-25",
+  "lastDate": "2026-09-28",
   "days": [
+    {"date":"2026-09-28","added":0,"removed":0,"updated":19,"total":6253},
+    {"date":"2026-09-27","added":0,"removed":0,"updated":19,"total":6253},
+    {"date":"2026-09-26","added":5,"removed":0,"updated":29,"total":6253},
     {"date":"2026-09-25","added":1,"removed":1,"updated":50,"total":6248},
     {"date":"2026-09-24","added":4,"removed":3,"updated":42,"total":6248},
     {"date":"2026-09-23","added":2,"removed":0,"updated":42,"total":6247},
@@ -96,6 +99,11 @@
     {"date":"2026-06-30","added":2,"removed":0,"updated":5,"total":5996}
   ],
   "companies": [
+    {"id":34431,"name":"Hue","slug":"hue","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Test agents in realistic worlds built from production usage","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://hue.run/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/1c5e6f96d14890d7f03f32c22ceed76e4fc923f2.png","url":"https://www.ycombinator.com/companies/hue","addedOn":"2026-09-26"},
+    {"id":32160,"name":"MusicArena","slug":"musicarena","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"The crowdsourced benchmark for AI-generated music and music production","industry":"B2B","location":"San Francisco, CA, USA","teamSize":null,"status":"Active","website":"https://musicarena.io/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/97ef82ddda796191842e9ee0fb976e3ccf939dca.png","url":"https://www.ycombinator.com/companies/musicarena","addedOn":"2026-09-26"},
+    {"id":37864,"name":"OpenHack","slug":"openhack","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Always-on AI security engineer","industry":"B2B","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://openhack.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/3665e2fbd95736778f3748429060face49d74d6d.png","url":"https://www.ycombinator.com/companies/openhack","addedOn":"2026-09-26"},
+    {"id":36577,"name":"OpEra","slug":"opera","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Automated operations research (OR) lab","industry":"B2B","location":"New York City, NY, USA","teamSize":2,"status":"Active","website":"https://operatechnologies.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/8ab2731276f4a748d3087f83aa4d1ed311a0690b.png","url":"https://www.ycombinator.com/companies/opera","addedOn":"2026-09-26"},
+    {"id":37236,"name":"Spine","slug":"spine","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"We run benefits, payroll & compliance for startups, for free","industry":"B2B","location":"San Francisco, CA, USA","teamSize":0,"status":"Active","website":"https://www.joinspine.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/e227fdb2c6620d1b088142bc179befd86c865fee.png","url":"https://www.ycombinator.com/companies/spine","addedOn":"2026-09-26"},
     {"id":35127,"name":"Rhem Labs","slug":"rhem-labs","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Home care technology for aging parents and their families","industry":"Healthcare","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://rhem.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/36cbf39bb5d034d7765e7ee595b7fac4dc2358e5.png","url":"https://www.ycombinator.com/companies/rhem-labs","addedOn":"2026-09-25"},
     {"id":37468,"name":"Ageospatial","slug":"ageospatial","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Helping insurance companies value risk on properties remotely.","industry":"Fintech","location":"San Francisco, CA, USA; Remote","teamSize":1,"status":"Active","website":"https://ageospatial.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/74f6c9e933a7a4a3c86d3c81c6964ca26989ba26.png","url":"https://www.ycombinator.com/companies/ageospatial","addedOn":"2026-09-24"},
     {"id":35291,"name":"Elimentary","slug":"elimentary","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Agents that run middle/back-office operations for Private Capital","industry":"Fintech","location":"New York City, NY, USA","teamSize":5,"status":"Active","website":"https://www.elimentary.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/5345725230878bce19968d49bf36c1acda691f77.png","url":"https://www.ycombinator.com/companies/elimentary","addedOn":"2026-09-24"},
