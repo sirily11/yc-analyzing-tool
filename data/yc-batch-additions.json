@@ -3,9 +3,10 @@
   "source": "https://yc-oss.github.io/api/changes/",
   "windowDays": 90,
   "maxEntries": 400,
-  "firstDate": "2026-07-05",
-  "lastDate": "2026-10-02",
+  "firstDate": "2026-07-06",
+  "lastDate": "2026-10-03",
   "days": [
+    {"date":"2026-10-03","added":2,"removed":0,"updated":37,"total":6269},
     {"date":"2026-10-02","added":0,"removed":1,"updated":40,"total":6267},
     {"date":"2026-10-01","added":4,"removed":1,"updated":54,"total":6268},
     {"date":"2026-09-30","added":5,"removed":0,"updated":39,"total":6265},
@@ -94,10 +95,11 @@
     {"date":"2026-07-09","added":4,"removed":0,"updated":75,"total":6024},
     {"date":"2026-07-08","added":8,"removed":0,"updated":76,"total":6020},
     {"date":"2026-07-07","added":5,"removed":0,"updated":67,"total":6012},
-    {"date":"2026-07-06","added":1,"removed":0,"updated":111,"total":6007},
-    {"date":"2026-07-05","added":0,"removed":0,"updated":14,"total":6006}
+    {"date":"2026-07-06","added":1,"removed":0,"updated":111,"total":6007}
   ],
   "companies": [
+    {"id":35751,"name":"Rystic","slug":"rystic","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"API simulators for testing and training agents locally","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://rystic.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/1259ed8e91fea5ce7bb3da813020323417f96fae.png","url":"https://www.ycombinator.com/companies/rystic","addedOn":"2026-10-03"},
+    {"id":36346,"name":"Silica","slug":"silica","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Actuators for Physical AI","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://silicamachines.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/2b8e6b4aadfde14366461b6e47d3f4d14e736df5.png","url":"https://www.ycombinator.com/companies/silica","addedOn":"2026-10-03"},
     {"id":35392,"name":"Dydema","slug":"dydema","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"The model company for neurotech.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://dydema.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/2f88326f16a3245ab42f5cb8218948d206913239.png","url":"https://www.ycombinator.com/companies/dydema","addedOn":"2026-10-01"},
     {"id":37732,"name":"Hundred","slug":"hundred","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"100% automated inspection for consumer electronics parts","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"http://hundred.systems/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/f9f26995d92445a7e77c0839448bb04ca0c89f08.png","url":"https://www.ycombinator.com/companies/hundred","addedOn":"2026-10-01"},
     {"id":13210,"name":"Reframe","slug":"reframe-2","batch":"Winter 2020","batchKey":"winter-2020","oneLiner":"Zoomable generative UI for codebase architecture","industry":"B2B","location":"","teamSize":0,"status":"Inactive","website":"https://reframe.dev/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/880705b835d5a12c59be031e53d0493e21e5b49c.png","url":"https://www.ycombinator.com/companies/reframe-2","addedOn":"2026-10-01"},
