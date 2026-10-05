@@ -3,9 +3,10 @@
   "source": "https://yc-oss.github.io/api/changes/",
   "windowDays": 90,
   "maxEntries": 400,
-  "firstDate": "2026-07-06",
-  "lastDate": "2026-10-03",
+  "firstDate": "2026-07-07",
+  "lastDate": "2026-10-04",
   "days": [
+    {"date":"2026-10-04","added":1,"removed":1,"updated":16,"total":6269},
     {"date":"2026-10-03","added":2,"removed":0,"updated":37,"total":6269},
     {"date":"2026-10-02","added":0,"removed":1,"updated":40,"total":6267},
     {"date":"2026-10-01","added":4,"removed":1,"updated":54,"total":6268},
@@ -94,10 +95,10 @@
     {"date":"2026-07-10","added":8,"removed":1,"updated":59,"total":6031},
     {"date":"2026-07-09","added":4,"removed":0,"updated":75,"total":6024},
     {"date":"2026-07-08","added":8,"removed":0,"updated":76,"total":6020},
-    {"date":"2026-07-07","added":5,"removed":0,"updated":67,"total":6012},
-    {"date":"2026-07-06","added":1,"removed":0,"updated":111,"total":6007}
+    {"date":"2026-07-07","added":5,"removed":0,"updated":67,"total":6012}
   ],
   "companies": [
+    {"id":32263,"name":"LinkLane","slug":"linklane","batch":"Winter 2027","batchKey":"winter-2027","oneLiner":"AI-powered freight brokerage. Quote, book, and track loads in seconds.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://linklane.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/622f0cd8620407da036d7d0809c1bb429c984f34.png","url":"https://www.ycombinator.com/companies/linklane","addedOn":"2026-10-04"},
     {"id":35751,"name":"Rystic","slug":"rystic","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"API simulators for testing and training agents locally","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://rystic.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/1259ed8e91fea5ce7bb3da813020323417f96fae.png","url":"https://www.ycombinator.com/companies/rystic","addedOn":"2026-10-03"},
     {"id":36346,"name":"Silica","slug":"silica","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Actuators for Physical AI","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://silicamachines.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/2b8e6b4aadfde14366461b6e47d3f4d14e736df5.png","url":"https://www.ycombinator.com/companies/silica","addedOn":"2026-10-03"},
     {"id":35392,"name":"Dydema","slug":"dydema","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"The model company for neurotech.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://dydema.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/2f88326f16a3245ab42f5cb8218948d206913239.png","url":"https://www.ycombinator.com/companies/dydema","addedOn":"2026-10-01"},
@@ -384,7 +385,6 @@
     {"id":32171,"name":"LemonLime","slug":"lemonlime","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"No-code AI that learns your business and self-creates automations.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":5,"status":"Active","website":"https://www.lemonlime.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/8ffbde2e695962be35fad4bb6260c320a8d18271.png","url":"https://www.ycombinator.com/companies/lemonlime","addedOn":"2026-07-07"},
     {"id":33349,"name":"Robocurve","slug":"robocurve","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"We measure how well robots can do real-world jobs.","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://robocurve.org","logo":"https://bookface-images.s3.amazonaws.com/small_logos/d6e8c861f1402c351c96ee862b0de398b987e645.png","url":"https://www.ycombinator.com/companies/robocurve","addedOn":"2026-07-07"},
     {"id":32259,"name":"screenpipe","slug":"screenpipe","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Turn your company’s daily work into automation","industry":"B2B","location":"San Francisco, CA, USA","teamSize":6,"status":"Active","website":"https://screenpipe.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/144e7207ec725036f43cc9a6b577a8320151e103.png","url":"https://www.ycombinator.com/companies/screenpipe","addedOn":"2026-07-07"},
-    {"id":31074,"name":"TrustAI","slug":"trustai","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Suggested cross-tool automations that run in one-click in background","industry":"B2B","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://auto.trytrust.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/882660c8a18b052eaabe5a10460a291038b111a7.png","url":"https://www.ycombinator.com/companies/trustai","addedOn":"2026-07-07"},
-    {"id":33283,"name":"Justinian","slug":"justinian","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Builders of the first AI-native government affairs firm.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://justinianai.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/05d00b332191d31f20aa45f1bbec7b3fd866e683.png","url":"https://www.ycombinator.com/companies/justinian","addedOn":"2026-07-06"}
+    {"id":31074,"name":"TrustAI","slug":"trustai","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Suggested cross-tool automations that run in one-click in background","industry":"B2B","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://auto.trytrust.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/882660c8a18b052eaabe5a10460a291038b111a7.png","url":"https://www.ycombinator.com/companies/trustai","addedOn":"2026-07-07"}
   ]
 }
