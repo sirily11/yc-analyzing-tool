@@ -3,9 +3,10 @@
   "source": "https://yc-oss.github.io/api/changes/",
   "windowDays": 90,
   "maxEntries": 400,
-  "firstDate": "2026-07-14",
-  "lastDate": "2026-10-11",
+  "firstDate": "2026-07-15",
+  "lastDate": "2026-10-12",
   "days": [
+    {"date":"2026-10-12","added":2,"removed":0,"updated":29,"total":6288},
     {"date":"2026-10-11","added":1,"removed":0,"updated":17,"total":6286},
     {"date":"2026-10-10","added":3,"removed":1,"updated":38,"total":6285},
     {"date":"2026-10-09","added":4,"removed":0,"updated":42,"total":6283},
@@ -94,10 +95,11 @@
     {"date":"2026-07-18","added":5,"removed":0,"updated":38,"total":6055},
     {"date":"2026-07-17","added":7,"removed":0,"updated":40,"total":6050},
     {"date":"2026-07-16","added":1,"removed":0,"updated":41,"total":6043},
-    {"date":"2026-07-15","added":2,"removed":0,"updated":37,"total":6042},
-    {"date":"2026-07-14","added":3,"removed":0,"updated":46,"total":6040}
+    {"date":"2026-07-15","added":2,"removed":0,"updated":37,"total":6042}
   ],
   "companies": [
+    {"id":34696,"name":"ChemPilot.ai","slug":"chempilotai","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Discover novel defense related materials/molecules.","industry":"Industrials","location":"Haifa, Haifa District, Israel","teamSize":3,"status":"Active","website":"https://chempilot.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/4c3f8543148c3a53ebe369d21ece622228018917.png","url":"https://www.ycombinator.com/companies/chempilotai","addedOn":"2026-10-12"},
+    {"id":31509,"name":"Rodeo Robotics","slug":"rodeo-robotics","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Robots for vehicle maintenance.","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://www.rodeorobotics.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ed94f83ed341c4f879d7c08c2570c04ba145e07c.png","url":"https://www.ycombinator.com/companies/rodeo-robotics","addedOn":"2026-10-12"},
     {"id":37999,"name":"RATLOG","slug":"ratlog","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Reusable heavy-lift rockets","industry":"Industrials","location":"Dresden, SN, Germany","teamSize":4,"status":"Active","website":null,"logo":"https://bookface-images.s3.amazonaws.com/small_logos/c91e646aa134e7ed3da1082d56c2a3cdd68f8337.png","url":"https://www.ycombinator.com/companies/ratlog","addedOn":"2026-10-11"},
     {"id":35191,"name":"Munito AI","slug":"munito-ai","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Open-model inference provider for Europe, private by default.","industry":"B2B","location":"Paris, Île-de-France, France; Remote","teamSize":1,"status":"Active","website":"https://munito.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/287fb0bcb8cbc376d57a3e34f3cd0cdda9966268.png","url":"https://www.ycombinator.com/companies/munito-ai","addedOn":"2026-10-10"},
     {"id":36279,"name":"Native","slug":"native","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Artificial Intuition for marketing","industry":"B2B","location":"San Francisco, CA, USA","teamSize":6,"status":"Active","website":"https://native.no/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/150e28c9ae3ba8f6c0bac4696c53752a638f59ff.png","url":"https://www.ycombinator.com/companies/native","addedOn":"2026-10-10"},
@@ -370,9 +372,6 @@
     {"id":32622,"name":"Rational","slug":"rational","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"AI Employees for Accounting","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://rational.to","logo":"https://bookface-images.s3.amazonaws.com/small_logos/88c9150f7633337a9e66431f2838539b473b583f.png","url":"https://www.ycombinator.com/companies/rational","addedOn":"2026-07-17"},
     {"id":31340,"name":"Illume Labs","slug":"illume-labs","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"24/7 Personal Health & Longevity Companion","industry":"Healthcare","location":"Boston, MA, USA","teamSize":3,"status":"Active","website":"https://www.illumelabs.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/dd1ef3f79f970a8952409fdf5f74ab223d1c47c4.png","url":"https://www.ycombinator.com/companies/illume-labs","addedOn":"2026-07-16"},
     {"id":33573,"name":"hardware intelligence","slug":"hardware-intelligence","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Agentic chip design with ultrafast feedback loops","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://hardwareintelligence.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/3c2193e7412febe2e812491e1a73617bb09eb897.png","url":"https://www.ycombinator.com/companies/hardware-intelligence","addedOn":"2026-07-15"},
-    {"id":29146,"name":"Singularity","slug":"singularity","batch":"Summer 2023","batchKey":"summer-2023","oneLiner":"Building and Protecting an Exciting Future","industry":"Industrials","location":"Los Angeles, CA, USA","teamSize":1,"status":"Active","website":"https://www.singularityus.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/25eb003278f7a4ef82c20d24087957581b4b51e7.png","url":"https://www.ycombinator.com/companies/singularity","addedOn":"2026-07-15"},
-    {"id":32624,"name":"Fabraix","slug":"fabraix","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"The world's frontier hacker for AI agents.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://fabraix.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/d3d83aa2013bbe6b22b37f316b294d0c717eea35.png","url":"https://www.ycombinator.com/companies/fabraix","addedOn":"2026-07-14"},
-    {"id":32554,"name":"Ooak Data","slug":"ooak-data","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"We build the world's largest library of real-world business workflow…","industry":"B2B","location":"Paris, Île-de-France, France","teamSize":5,"status":"Active","website":"https://ooakdata.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ad1b7cce12014a7746a7f8b912560717f6e2f037.png","url":"https://www.ycombinator.com/companies/ooak-data","addedOn":"2026-07-14"},
-    {"id":33313,"name":"SubVysion","slug":"subvysion","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"We help contractors dig safer with 3D maps of underground…","industry":"Real Estate and Construction","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://subvysion.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/0df819d609df4c8e15ebdc21bbc1f518d56e52d8.png","url":"https://www.ycombinator.com/companies/subvysion","addedOn":"2026-07-14"}
+    {"id":29146,"name":"Singularity","slug":"singularity","batch":"Summer 2023","batchKey":"summer-2023","oneLiner":"Building and Protecting an Exciting Future","industry":"Industrials","location":"Los Angeles, CA, USA","teamSize":1,"status":"Active","website":"https://www.singularityus.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/25eb003278f7a4ef82c20d24087957581b4b51e7.png","url":"https://www.ycombinator.com/companies/singularity","addedOn":"2026-07-15"}
   ]
 }
