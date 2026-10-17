@@ -3,9 +3,10 @@
   "source": "https://yc-oss.github.io/api/changes/",
   "windowDays": 90,
   "maxEntries": 400,
-  "firstDate": "2026-07-18",
-  "lastDate": "2026-10-16",
+  "firstDate": "2026-07-19",
+  "lastDate": "2026-10-17",
   "days": [
+    {"date":"2026-10-17","added":1,"removed":1,"updated":59,"total":6307},
     {"date":"2026-10-16","added":7,"removed":0,"updated":78,"total":6307},
     {"date":"2026-10-15","added":3,"removed":0,"updated":50,"total":6300},
     {"date":"2026-10-14","added":3,"removed":0,"updated":68,"total":6297},
@@ -95,10 +96,10 @@
     {"date":"2026-07-22","added":3,"removed":0,"updated":41,"total":6066},
     {"date":"2026-07-21","added":4,"removed":0,"updated":44,"total":6063},
     {"date":"2026-07-20","added":2,"removed":0,"updated":81,"total":6059},
-    {"date":"2026-07-19","added":2,"removed":0,"updated":33,"total":6057},
-    {"date":"2026-07-18","added":5,"removed":0,"updated":38,"total":6055}
+    {"date":"2026-07-19","added":2,"removed":0,"updated":33,"total":6057}
   ],
   "companies": [
+    {"id":37896,"name":"Aucert","slug":"aucert","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"A team of expert AI agents that test mobile apps on their own.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://www.aucert.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/fcf314b4f1f24f66082b93a3ec4084c76234c436.png","url":"https://www.ycombinator.com/companies/aucert","addedOn":"2026-10-17"},
     {"id":37998,"name":"Adside.ai","slug":"adsideai","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI agency that manages paid ads on Meta, Google, LinkedIn, etc.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://adside.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/924baaaf60804210430329e604f7a68c0670bc03.png","url":"https://www.ycombinator.com/companies/adsideai","addedOn":"2026-10-16"},
     {"id":31575,"name":"Fire Wallet","slug":"fire-wallet","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Fire Wallet is a privacy-first crypto wallet designed to just work,…","industry":"Fintech","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://fire.co","logo":"https://bookface-images.s3.amazonaws.com/small_logos/b24edcd9c30661e9d4cf818ec14536902f2b2c41.png","url":"https://www.ycombinator.com/companies/fire-wallet","addedOn":"2026-10-16"},
     {"id":35685,"name":"Obia","slug":"obia","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI-native commercial real estate brokerage","industry":"Real Estate and Construction","location":"San Francisco, CA, USA","teamSize":4,"status":"Active","website":"https://obia.io/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/2d934a569ca7e9c9f8cd404a1de2cd48f7e9510e.png","url":"https://www.ycombinator.com/companies/obia","addedOn":"2026-10-16"},
@@ -376,11 +377,6 @@
     {"id":32616,"name":"Orvixo","slug":"orvixo","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"AI advanced planning and optimisation for manufacturers.","industry":"Industrials","location":"London, England, United Kingdom","teamSize":2,"status":"Active","website":"https://www.orvixo.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ddba7253c3011655d54f0092475cf8b1618333c9.png","url":"https://www.ycombinator.com/companies/orvixo","addedOn":"2026-07-21"},
     {"id":31555,"name":"rekursiv.ai","slug":"rekursivai","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Scale AI scientists whose own breakthroughs accelerate the next.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://rekursiv.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/f8606b08cc0428757361006dc3171d7b460ae47e.png","url":"https://www.ycombinator.com/companies/rekursivai","addedOn":"2026-07-20"},
     {"id":32123,"name":"HERA","slug":"manufacturingintelligence","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Hera automates mechanical design reviews to catch thousand dollar…","industry":"Industrials","location":"Seattle, WA, USA","teamSize":2,"status":"Active","website":"https://www.manufacturingintelligence.org","logo":"https://bookface-images.s3.amazonaws.com/small_logos/caa902826145e78311e27007937976e8663a9265.png","url":"https://www.ycombinator.com/companies/manufacturingintelligence","addedOn":"2026-07-19"},
-    {"id":31825,"name":"Kebra","slug":"kebra","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Make your field service company AI-native","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://kebra.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/2e21f70e5b9032365254edae847e8dcbc9ffddb3.png","url":"https://www.ycombinator.com/companies/kebra","addedOn":"2026-07-19"},
-    {"id":32133,"name":"Belvedir","slug":"belvedir","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"The autonomous private AI platform.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://belvedir.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/f563d562770577c32b95513d2c40e79d38c42745.png","url":"https://www.ycombinator.com/companies/belvedir","addedOn":"2026-07-18"},
-    {"id":33606,"name":"Billow AI Labs","slug":"billow-ai-labs","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"AI-native Accounting & Finance Firm for Regulated Industries","industry":"B2B","location":"San Francisco, CA, USA","teamSize":0,"status":"Active","website":"https://thebillow.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/2c42b391e7d2cf9beb71d20f5ce1ed2b4e77e77d.png","url":"https://www.ycombinator.com/companies/billow-ai-labs","addedOn":"2026-07-18"},
-    {"id":32200,"name":"Bizmark","slug":"bizmark","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"The operating system built to each company’s reality.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://bizmark.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/4791de2dabb8bec7ed5148dd8de1f8400f029cbd.png","url":"https://www.ycombinator.com/companies/bizmark","addedOn":"2026-07-18"},
-    {"id":32649,"name":"Daqstra","slug":"daqstra","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"AI-native orchestration for physical R&D","industry":"B2B","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://www.daqstra.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/dad9cd6f305ec9c8a219f22ee7d83e68f227d245.png","url":"https://www.ycombinator.com/companies/daqstra","addedOn":"2026-07-18"},
-    {"id":32122,"name":"Donkey","slug":"donkey","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"The AI-native trading company: China factory-direct for US importers","industry":"B2B","location":"San Francisco, CA, USA","teamSize":7,"status":"Active","website":"https://donkey.trade","logo":"https://bookface-images.s3.amazonaws.com/small_logos/830e588b41c5a8b170830ca32354c6fb76cade4c.png","url":"https://www.ycombinator.com/companies/donkey","addedOn":"2026-07-18"}
+    {"id":31825,"name":"Kebra","slug":"kebra","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Make your field service company AI-native","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://kebra.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/2e21f70e5b9032365254edae847e8dcbc9ffddb3.png","url":"https://www.ycombinator.com/companies/kebra","addedOn":"2026-07-19"}
   ]
 }
