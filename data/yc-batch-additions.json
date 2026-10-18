@@ -3,9 +3,10 @@
   "source": "https://yc-oss.github.io/api/changes/",
   "windowDays": 90,
   "maxEntries": 400,
-  "firstDate": "2026-07-19",
-  "lastDate": "2026-10-17",
+  "firstDate": "2026-07-20",
+  "lastDate": "2026-10-18",
   "days": [
+    {"date":"2026-10-18","added":0,"removed":1,"updated":32,"total":6306},
     {"date":"2026-10-17","added":1,"removed":1,"updated":59,"total":6307},
     {"date":"2026-10-16","added":7,"removed":0,"updated":78,"total":6307},
     {"date":"2026-10-15","added":3,"removed":0,"updated":50,"total":6300},
@@ -95,8 +96,7 @@
     {"date":"2026-07-23","added":6,"removed":0,"updated":47,"total":6072},
     {"date":"2026-07-22","added":3,"removed":0,"updated":41,"total":6066},
     {"date":"2026-07-21","added":4,"removed":0,"updated":44,"total":6063},
-    {"date":"2026-07-20","added":2,"removed":0,"updated":81,"total":6059},
-    {"date":"2026-07-19","added":2,"removed":0,"updated":33,"total":6057}
+    {"date":"2026-07-20","added":2,"removed":0,"updated":81,"total":6059}
   ],
   "companies": [
     {"id":37896,"name":"Aucert","slug":"aucert","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"A team of expert AI agents that test mobile apps on their own.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://www.aucert.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/fcf314b4f1f24f66082b93a3ec4084c76234c436.png","url":"https://www.ycombinator.com/companies/aucert","addedOn":"2026-10-17"},
@@ -375,8 +375,6 @@
     {"id":32260,"name":"Manifold","slug":"manifold-2","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Low-cost, deployment-ready robotic labor for warehouses","industry":"Industrials","location":"Los Angeles, CA, USA","teamSize":2,"status":"Active","website":"https://www.manifoldindustries.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/98f03122e41743439cec57f8152eac9cd506d714.png","url":"https://www.ycombinator.com/companies/manifold-2","addedOn":"2026-07-21"},
     {"id":32130,"name":"Olam Labs","slug":"olam-labs","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Evaluating models for behavior and performance through simulated games","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://olamlabs.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/d6d9543a0527b0b5ac428e043f211c75ac5d1d59.png","url":"https://www.ycombinator.com/companies/olam-labs","addedOn":"2026-07-21"},
     {"id":32616,"name":"Orvixo","slug":"orvixo","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"AI advanced planning and optimisation for manufacturers.","industry":"Industrials","location":"London, England, United Kingdom","teamSize":2,"status":"Active","website":"https://www.orvixo.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ddba7253c3011655d54f0092475cf8b1618333c9.png","url":"https://www.ycombinator.com/companies/orvixo","addedOn":"2026-07-21"},
-    {"id":31555,"name":"rekursiv.ai","slug":"rekursivai","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Scale AI scientists whose own breakthroughs accelerate the next.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://rekursiv.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/f8606b08cc0428757361006dc3171d7b460ae47e.png","url":"https://www.ycombinator.com/companies/rekursivai","addedOn":"2026-07-20"},
-    {"id":32123,"name":"HERA","slug":"manufacturingintelligence","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Hera automates mechanical design reviews to catch thousand dollar…","industry":"Industrials","location":"Seattle, WA, USA","teamSize":2,"status":"Active","website":"https://www.manufacturingintelligence.org","logo":"https://bookface-images.s3.amazonaws.com/small_logos/caa902826145e78311e27007937976e8663a9265.png","url":"https://www.ycombinator.com/companies/manufacturingintelligence","addedOn":"2026-07-19"},
-    {"id":31825,"name":"Kebra","slug":"kebra","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Make your field service company AI-native","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://kebra.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/2e21f70e5b9032365254edae847e8dcbc9ffddb3.png","url":"https://www.ycombinator.com/companies/kebra","addedOn":"2026-07-19"}
+    {"id":31555,"name":"rekursiv.ai","slug":"rekursivai","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Scale AI scientists whose own breakthroughs accelerate the next.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://rekursiv.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/f8606b08cc0428757361006dc3171d7b460ae47e.png","url":"https://www.ycombinator.com/companies/rekursivai","addedOn":"2026-07-20"}
   ]
 }
