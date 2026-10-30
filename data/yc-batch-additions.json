@@ -3,9 +3,10 @@
   "source": "https://yc-oss.github.io/api/changes/",
   "windowDays": 90,
   "maxEntries": 400,
-  "firstDate": "2026-07-31",
-  "lastDate": "2026-10-28",
+  "firstDate": "2026-08-01",
+  "lastDate": "2026-10-29",
   "days": [
+    {"date":"2026-10-29","added":4,"removed":1,"updated":48,"total":6350},
     {"date":"2026-10-28","added":6,"removed":0,"updated":39,"total":6347},
     {"date":"2026-10-27","added":4,"removed":0,"updated":38,"total":6341},
     {"date":"2026-10-26","added":1,"removed":0,"updated":24,"total":6337},
@@ -94,10 +95,13 @@
     {"date":"2026-08-04","added":3,"removed":0,"updated":44,"total":6119},
     {"date":"2026-08-03","added":4,"removed":0,"updated":45,"total":6116},
     {"date":"2026-08-02","added":2,"removed":0,"updated":18,"total":6112},
-    {"date":"2026-08-01","added":2,"removed":0,"updated":29,"total":6110},
-    {"date":"2026-07-31","added":2,"removed":0,"updated":32,"total":6108}
+    {"date":"2026-08-01","added":2,"removed":0,"updated":29,"total":6110}
   ],
   "companies": [
+    {"id":35092,"name":"Cardinal Square","slug":"cardinal-square","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI-native schools","industry":"Education","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://cardinalsquare.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/87a9ad77df8ff03bf6998f4f2007f263b31dbba5.png","url":"https://www.ycombinator.com/companies/cardinal-square","addedOn":"2026-10-29"},
+    {"id":33318,"name":"HillStar","slug":"hillstar","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Agents to help utilities make better buying decisions.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://hillstar.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/5b2a3199ea6bce97161125f2d12ceedf9cc1ecd2.png","url":"https://www.ycombinator.com/companies/hillstar","addedOn":"2026-10-29"},
+    {"id":36908,"name":"RouterPlus","slug":"routerplus","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Marketplace for AI inference: the right model at the best price","industry":"B2B","location":"Bengaluru, KA, India","teamSize":3,"status":"Active","website":"https://routerplus.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/6bb3c1b091b775faf5b88bf2fdc28cd10b50bb08.png","url":"https://www.ycombinator.com/companies/routerplus","addedOn":"2026-10-29"},
+    {"id":34899,"name":"The Letter Company","slug":"the-letter-company","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"The world's first coding agent, harness, & IDE for growth engineering.","industry":"B2B","location":"New York City, NY, USA","teamSize":6,"status":"Active","website":"https://letter.dev","logo":"https://bookface-images.s3.amazonaws.com/small_logos/52ab0840253398a6b68d120c27e1324adecaa262.png","url":"https://www.ycombinator.com/companies/the-letter-company","addedOn":"2026-10-29"},
     {"id":38754,"name":"Aikido Technologies","slug":"aikido-technologies","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Clean marine AI datacenters","industry":"Industrials","location":"San Francisco, CA, USA; Remote","teamSize":5,"status":"Active","website":"https://www.aikidotechnologies.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ffb13551195295abd4b5ab3d0ecce6ac89addccd.png","url":"https://www.ycombinator.com/companies/aikido-technologies","addedOn":"2026-10-28"},
     {"id":36048,"name":"Archgen Labs","slug":"archgen-labs","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"AI-powered EDA tools for faster, cooler 3D chips","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://www.archgen.tech/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/859bb4acfd797a8066a3332a29dbfc4ee42fcb0e.png","url":"https://www.ycombinator.com/companies/archgen-labs","addedOn":"2026-10-28"},
     {"id":36840,"name":"Axonnic","slug":"axonnic","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Bringing human dexterity to every robot","industry":"Industrials","location":"San Francisco, CA, USA; Remote","teamSize":2,"status":"Active","website":"https://www.axonnic.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/f269fdfc703083f216ecc708a1d72e1eec821657.png","url":"https://www.ycombinator.com/companies/axonnic","addedOn":"2026-10-28"},
@@ -366,8 +370,6 @@
     {"id":32517,"name":"Standard Machines","slug":"standard-machines","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Environments For Chip Design","industry":"B2B","location":"San Francisco, CA, USA","teamSize":null,"status":"Active","website":"https://standardmachines.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/20aa62fc0a930e7bfdba7047f185bab421afd2b2.png","url":"https://www.ycombinator.com/companies/standard-machines","addedOn":"2026-08-02"},
     {"id":31537,"name":"Trident","slug":"trident","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Secure your cloud and webapps by finding real attack paths","industry":"B2B","location":"San Francisco, CA, USA","teamSize":4,"status":"Active","website":"https://tridentsecurity.io/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/537de46d97dcdac9c07b330a6a1a4b2ab0583b7b.png","url":"https://www.ycombinator.com/companies/trident","addedOn":"2026-08-02"},
     {"id":31557,"name":"Amorphic Labs","slug":"amorphic-labs","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Agentic, Personalized Product Demo Videos for Sales","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://www.amorphiclabs.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/d15b721a8d0e299e74b3561f196bb056b93f1fd9.png","url":"https://www.ycombinator.com/companies/amorphic-labs","addedOn":"2026-08-01"},
-    {"id":31923,"name":"tash","slug":"tash","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"The investment platform for sports & trading cards","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":4,"status":"Active","website":"https://www.tash.cards/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/d51cf4813d14454781386553da550cc204a569be.png","url":"https://www.ycombinator.com/companies/tash","addedOn":"2026-08-01"},
-    {"id":34365,"name":"Lambda Robotics","slug":"lambda-robotics","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Robotics for AI Infrastructure","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":6,"status":"Active","website":"https://lambdarobotics.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/751b6f5898f8cb0549b80d5a13c551d0c7c0e12f.png","url":"https://www.ycombinator.com/companies/lambda-robotics","addedOn":"2026-07-31"},
-    {"id":32587,"name":"TareBio","slug":"tarebio","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Vaccines for any cancer or infection in weeks","industry":"Healthcare","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://tarebio.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/9e770bbea41518001119968d389d0d3e35ce7abe.png","url":"https://www.ycombinator.com/companies/tarebio","addedOn":"2026-07-31"}
+    {"id":31923,"name":"tash","slug":"tash","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"The investment platform for sports & trading cards","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":4,"status":"Active","website":"https://www.tash.cards/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/d51cf4813d14454781386553da550cc204a569be.png","url":"https://www.ycombinator.com/companies/tash","addedOn":"2026-08-01"}
   ]
 }
