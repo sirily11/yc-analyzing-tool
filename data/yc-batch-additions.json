@@ -3,9 +3,10 @@
   "source": "https://yc-oss.github.io/api/changes/",
   "windowDays": 90,
   "maxEntries": 400,
-  "firstDate": "2026-08-04",
-  "lastDate": "2026-11-01",
+  "firstDate": "2026-08-05",
+  "lastDate": "2026-11-02",
   "days": [
+    {"date":"2026-11-02","added":3,"removed":2,"updated":25,"total":6362},
     {"date":"2026-11-01","added":3,"removed":0,"updated":47,"total":6361},
     {"date":"2026-10-31","added":4,"removed":0,"updated":274,"total":6358},
     {"date":"2026-10-30","added":5,"removed":1,"updated":48,"total":6354},
@@ -94,10 +95,12 @@
     {"date":"2026-08-08","added":3,"removed":0,"updated":36,"total":6132},
     {"date":"2026-08-07","added":5,"removed":0,"updated":63,"total":6129},
     {"date":"2026-08-06","added":2,"removed":2,"updated":44,"total":6124},
-    {"date":"2026-08-05","added":5,"removed":0,"updated":42,"total":6124},
-    {"date":"2026-08-04","added":3,"removed":0,"updated":44,"total":6119}
+    {"date":"2026-08-05","added":5,"removed":0,"updated":42,"total":6124}
   ],
   "companies": [
+    {"id":35458,"name":"Caladh","slug":"caladh","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Anti-drone defense for the maritime domain","industry":"Industrials","location":"Boston, MA, USA","teamSize":null,"status":"Active","website":"https://caladh.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/40892c64e13b8e9e78a67c5002788bc45d17ba1b.png","url":"https://www.ycombinator.com/companies/caladh","addedOn":"2026-11-02"},
+    {"id":36514,"name":"Kanopy","slug":"kanopy","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Computer vision operating layer for physical infrastructure","industry":"Industrials","location":"New York City, NY, USA","teamSize":2,"status":"Active","website":"https://www.kanopy-ai.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/8db59405c47dfd1fbe3cb7db6cb17937d104692a.png","url":"https://www.ycombinator.com/companies/kanopy","addedOn":"2026-11-02"},
+    {"id":31389,"name":"Ryhla","slug":"ryhla","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Faster power grid connection for your projects","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://ryhla.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/958ce266d784412860aea37d9654c70b9d6bae3b.png","url":"https://www.ycombinator.com/companies/ryhla","addedOn":"2026-11-02"},
     {"id":41229,"name":"Colony","slug":"colony","batch":"Winter 2027","batchKey":"winter-2027","oneLiner":"Long-range drone network for world data collection","industry":"Industrials","location":"Waterloo, ON, Canada","teamSize":3,"status":"Active","website":"https://colony.tech","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ded786fce75de846319a49e7392267fcd494b3e0.png","url":"https://www.ycombinator.com/companies/colony","addedOn":"2026-11-01"},
     {"id":30172,"name":"Enhanced Radar","slug":"enhanced-radar","batch":"Winter 2025","batchKey":"winter-2025","oneLiner":"AI systems for aviation","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":12,"status":"Active","website":"https://www.enhancedradar.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/e10734051ac91f13f36d26eb75fc983d06a0c0f6.png","url":"https://www.ycombinator.com/companies/enhanced-radar","addedOn":"2026-11-01"},
     {"id":35095,"name":"Taan.ai","slug":"taanai","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"the most precise & controllable foundation music models","industry":"B2B","location":"San Francisco, CA, USA","teamSize":0,"status":"Active","website":"https://taan.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/e81be68dcd0ecbbf3a0f1bdcbf4488f4e6bdcc21.png","url":"https://www.ycombinator.com/companies/taanai","addedOn":"2026-11-01"},
@@ -370,9 +373,6 @@
     {"id":32749,"name":"Arbital","slug":"arbital","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"The trading terminal for perps, memes, and stocks.","industry":"Fintech","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://arbital.xyz/yc?token=YC2026","logo":"https://bookface-images.s3.amazonaws.com/small_logos/41b5fd38dcf7826f6043c80c1a7e50338b8b5cb1.png","url":"https://www.ycombinator.com/companies/arbital","addedOn":"2026-08-05"},
     {"id":33055,"name":"chromie.dev","slug":"chromiedev","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"find, qualify, & win contracts with AI","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://chromie.dev","logo":"https://bookface-images.s3.amazonaws.com/small_logos/5a2ef01980100f9fd5b3d0aa3fa9559b4b8ae93e.png","url":"https://www.ycombinator.com/companies/chromiedev","addedOn":"2026-08-05"},
     {"id":32198,"name":"Riften","slug":"riften","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Earned Intelligence for every company.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":0,"status":"Active","website":"https://riften.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/4422075ddefbe2da912fc68b24148bca53aaa5b6.png","url":"https://www.ycombinator.com/companies/riften","addedOn":"2026-08-05"},
-    {"id":32750,"name":"Ultrasonium","slug":"ultrasonium","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Manufacturing the metal parts the world runs on faster, cheaper, safer","industry":"Industrials","location":"Boston, MA, USA","teamSize":4,"status":"Active","website":"https://ultrasonium.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/734dc12d12265ba8890bf4ef5e7e564bdb629a87.png","url":"https://www.ycombinator.com/companies/ultrasonium","addedOn":"2026-08-05"},
-    {"id":32623,"name":"Omanta","slug":"omanta","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"A research lab for one","industry":"Healthcare","location":"San Francisco, CA, USA","teamSize":4,"status":"Active","website":"https://omanta.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ae1812a6e6a806880355a25e542d3970bd58deb5.png","url":"https://www.ycombinator.com/companies/omanta","addedOn":"2026-08-04"},
-    {"id":34794,"name":"Qokedas","slug":"qokedas","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Teaching models to decode the physical world","industry":"B2B","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://qokedas.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/31c1e7e41e8bdce6fdb8b0dbca8bc555e944bc47.png","url":"https://www.ycombinator.com/companies/qokedas","addedOn":"2026-08-04"},
-    {"id":32261,"name":"Rasyn","slug":"rasyn","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Towards a General Intelligence for Chemistry","industry":"Healthcare","location":"San Francisco, CA, USA","teamSize":0,"status":"Active","website":"https://www.rasyn.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/076afb6659e399c99ca25bb457a92d8183d0aba2.png","url":"https://www.ycombinator.com/companies/rasyn","addedOn":"2026-08-04"}
+    {"id":32750,"name":"Ultrasonium","slug":"ultrasonium","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Manufacturing the metal parts the world runs on faster, cheaper, safer","industry":"Industrials","location":"Boston, MA, USA","teamSize":4,"status":"Active","website":"https://ultrasonium.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/734dc12d12265ba8890bf4ef5e7e564bdb629a87.png","url":"https://www.ycombinator.com/companies/ultrasonium","addedOn":"2026-08-05"}
   ]
 }
