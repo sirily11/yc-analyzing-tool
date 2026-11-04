@@ -3,9 +3,10 @@
   "source": "https://yc-oss.github.io/api/changes/",
   "windowDays": 90,
   "maxEntries": 400,
-  "firstDate": "2026-08-05",
-  "lastDate": "2026-11-02",
+  "firstDate": "2026-08-06",
+  "lastDate": "2026-11-03",
   "days": [
+    {"date":"2026-11-03","added":0,"removed":0,"updated":51,"total":6362},
     {"date":"2026-11-02","added":3,"removed":2,"updated":25,"total":6362},
     {"date":"2026-11-01","added":3,"removed":0,"updated":47,"total":6361},
     {"date":"2026-10-31","added":4,"removed":0,"updated":274,"total":6358},
@@ -94,8 +95,7 @@
     {"date":"2026-08-09","added":3,"removed":0,"updated":12,"total":6135},
     {"date":"2026-08-08","added":3,"removed":0,"updated":36,"total":6132},
     {"date":"2026-08-07","added":5,"removed":0,"updated":63,"total":6129},
-    {"date":"2026-08-06","added":2,"removed":2,"updated":44,"total":6124},
-    {"date":"2026-08-05","added":5,"removed":0,"updated":42,"total":6124}
+    {"date":"2026-08-06","added":2,"removed":2,"updated":44,"total":6124}
   ],
   "companies": [
     {"id":35458,"name":"Caladh","slug":"caladh","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Anti-drone defense for the maritime domain","industry":"Industrials","location":"Boston, MA, USA","teamSize":null,"status":"Active","website":"https://caladh.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/40892c64e13b8e9e78a67c5002788bc45d17ba1b.png","url":"https://www.ycombinator.com/companies/caladh","addedOn":"2026-11-02"},
@@ -368,11 +368,6 @@
     {"id":33020,"name":"Radley","slug":"radley","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"AI-native, full-stack radiology practice","industry":"Healthcare","location":"San Francisco, CA, USA; Remote","teamSize":2,"status":"Active","website":"https://radley.health/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/eaa9729cc14d1a256b46037b05b50ac5b7f7c291.png","url":"https://www.ycombinator.com/companies/radley","addedOn":"2026-08-07"},
     {"id":32172,"name":"Solo Labs","slug":"solo-labs","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Coding Agents","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://jcode.sh/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/0d863d3cf6091c132bb3f8d22d57b3597bc971de.png","url":"https://www.ycombinator.com/companies/solo-labs","addedOn":"2026-08-07"},
     {"id":32618,"name":"Click","slug":"click","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Web search & connectors for agents","industry":"B2B","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://www.useclick.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/3eb675c91f3464d134cd3d9c18712ad08bea23bb.png","url":"https://www.ycombinator.com/companies/click","addedOn":"2026-08-06"},
-    {"id":35094,"name":"Forward","slug":"useforward","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Unifying Global Private Credit","industry":"B2B","location":"San Francisco, CA, USA","teamSize":5,"status":"Active","website":"https://www.useforward.co/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/717ea600e14829731cf877a194aca957195d9b27.png","url":"https://www.ycombinator.com/companies/useforward","addedOn":"2026-08-06"},
-    {"id":33250,"name":"Agent FM","slug":"agent-fm","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"One group chat to hear and steer your coding agents.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://www.agentfm.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/1cc0ea423493737ae6717d834b6bdb19aaf41f58.png","url":"https://www.ycombinator.com/companies/agent-fm","addedOn":"2026-08-05"},
-    {"id":32749,"name":"Arbital","slug":"arbital","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"The trading terminal for perps, memes, and stocks.","industry":"Fintech","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://arbital.xyz/yc?token=YC2026","logo":"https://bookface-images.s3.amazonaws.com/small_logos/41b5fd38dcf7826f6043c80c1a7e50338b8b5cb1.png","url":"https://www.ycombinator.com/companies/arbital","addedOn":"2026-08-05"},
-    {"id":33055,"name":"chromie.dev","slug":"chromiedev","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"find, qualify, & win contracts with AI","industry":"B2B","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://chromie.dev","logo":"https://bookface-images.s3.amazonaws.com/small_logos/5a2ef01980100f9fd5b3d0aa3fa9559b4b8ae93e.png","url":"https://www.ycombinator.com/companies/chromiedev","addedOn":"2026-08-05"},
-    {"id":32198,"name":"Riften","slug":"riften","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Earned Intelligence for every company.","industry":"B2B","location":"San Francisco, CA, USA","teamSize":0,"status":"Active","website":"https://riften.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/4422075ddefbe2da912fc68b24148bca53aaa5b6.png","url":"https://www.ycombinator.com/companies/riften","addedOn":"2026-08-05"},
-    {"id":32750,"name":"Ultrasonium","slug":"ultrasonium","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Manufacturing the metal parts the world runs on faster, cheaper, safer","industry":"Industrials","location":"Boston, MA, USA","teamSize":4,"status":"Active","website":"https://ultrasonium.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/734dc12d12265ba8890bf4ef5e7e564bdb629a87.png","url":"https://www.ycombinator.com/companies/ultrasonium","addedOn":"2026-08-05"}
+    {"id":35094,"name":"Forward","slug":"useforward","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Unifying Global Private Credit","industry":"B2B","location":"San Francisco, CA, USA","teamSize":5,"status":"Active","website":"https://www.useforward.co/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/717ea600e14829731cf877a194aca957195d9b27.png","url":"https://www.ycombinator.com/companies/useforward","addedOn":"2026-08-06"}
   ]
 }
