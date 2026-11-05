@@ -3,9 +3,10 @@
   "source": "https://yc-oss.github.io/api/changes/",
   "windowDays": 90,
   "maxEntries": 400,
-  "firstDate": "2026-08-06",
-  "lastDate": "2026-11-03",
+  "firstDate": "2026-08-07",
+  "lastDate": "2026-11-04",
   "days": [
+    {"date":"2026-11-04","added":2,"removed":0,"updated":37,"total":6364},
     {"date":"2026-11-03","added":0,"removed":0,"updated":51,"total":6362},
     {"date":"2026-11-02","added":3,"removed":2,"updated":25,"total":6362},
     {"date":"2026-11-01","added":3,"removed":0,"updated":47,"total":6361},
@@ -94,10 +95,11 @@
     {"date":"2026-08-10","added":4,"removed":0,"updated":41,"total":6139},
     {"date":"2026-08-09","added":3,"removed":0,"updated":12,"total":6135},
     {"date":"2026-08-08","added":3,"removed":0,"updated":36,"total":6132},
-    {"date":"2026-08-07","added":5,"removed":0,"updated":63,"total":6129},
-    {"date":"2026-08-06","added":2,"removed":2,"updated":44,"total":6124}
+    {"date":"2026-08-07","added":5,"removed":0,"updated":63,"total":6129}
   ],
   "companies": [
+    {"id":36246,"name":"Ailit","slug":"ailit","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Electrifying North American freight rail with swappable batteries.","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":6,"status":"Active","website":"https://ailitrail.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/e2e2aafce9f971d9306b1ed0550568f290599866.png","url":"https://www.ycombinator.com/companies/ailit","addedOn":"2026-11-04"},
+    {"id":35520,"name":"Evardi","slug":"evardi","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Agents that engineer the grid edge","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":4,"status":"Active","website":"https://evardi.ai/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/ec3978c8515651f30596e84a039e6ab0d5cacd6d.png","url":"https://www.ycombinator.com/companies/evardi","addedOn":"2026-11-04"},
     {"id":35458,"name":"Caladh","slug":"caladh","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Anti-drone defense for the maritime domain","industry":"Industrials","location":"Boston, MA, USA","teamSize":null,"status":"Active","website":"https://caladh.com","logo":"https://bookface-images.s3.amazonaws.com/small_logos/40892c64e13b8e9e78a67c5002788bc45d17ba1b.png","url":"https://www.ycombinator.com/companies/caladh","addedOn":"2026-11-02"},
     {"id":36514,"name":"Kanopy","slug":"kanopy","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Computer vision operating layer for physical infrastructure","industry":"Industrials","location":"New York City, NY, USA","teamSize":2,"status":"Active","website":"https://www.kanopy-ai.com/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/8db59405c47dfd1fbe3cb7db6cb17937d104692a.png","url":"https://www.ycombinator.com/companies/kanopy","addedOn":"2026-11-02"},
     {"id":31389,"name":"Ryhla","slug":"ryhla","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Faster power grid connection for your projects","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":2,"status":"Active","website":"https://ryhla.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/958ce266d784412860aea37d9654c70b9d6bae3b.png","url":"https://www.ycombinator.com/companies/ryhla","addedOn":"2026-11-02"},
@@ -366,8 +368,6 @@
     {"id":34464,"name":"herdr","slug":"herdr","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"building the open agent runtime","industry":"B2B","location":"Ankara, Ankara, Turkey","teamSize":1,"status":"Active","website":"https://herdr.dev/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/16f63118d9ed1edf6a055497860b53107c37b334.png","url":"https://www.ycombinator.com/companies/herdr","addedOn":"2026-08-07"},
     {"id":32716,"name":"Neuromorphic","slug":"neuromorphic","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Building embodiment agnostic robot brains.","industry":"Industrials","location":"San Francisco, CA, USA","teamSize":3,"status":"Active","website":"https://www.neuromorphic.vision/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/470f3b57cd018aad9c127e64e5b952d32a64d435.png","url":"https://www.ycombinator.com/companies/neuromorphic","addedOn":"2026-08-07"},
     {"id":33020,"name":"Radley","slug":"radley","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"AI-native, full-stack radiology practice","industry":"Healthcare","location":"San Francisco, CA, USA; Remote","teamSize":2,"status":"Active","website":"https://radley.health/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/eaa9729cc14d1a256b46037b05b50ac5b7f7c291.png","url":"https://www.ycombinator.com/companies/radley","addedOn":"2026-08-07"},
-    {"id":32172,"name":"Solo Labs","slug":"solo-labs","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Coding Agents","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://jcode.sh/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/0d863d3cf6091c132bb3f8d22d57b3597bc971de.png","url":"https://www.ycombinator.com/companies/solo-labs","addedOn":"2026-08-07"},
-    {"id":32618,"name":"Click","slug":"click","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Web search & connectors for agents","industry":"B2B","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://www.useclick.ai","logo":"https://bookface-images.s3.amazonaws.com/small_logos/3eb675c91f3464d134cd3d9c18712ad08bea23bb.png","url":"https://www.ycombinator.com/companies/click","addedOn":"2026-08-06"},
-    {"id":35094,"name":"Forward","slug":"useforward","batch":"Fall 2026","batchKey":"fall-2026","oneLiner":"Unifying Global Private Credit","industry":"B2B","location":"San Francisco, CA, USA","teamSize":5,"status":"Active","website":"https://www.useforward.co/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/717ea600e14829731cf877a194aca957195d9b27.png","url":"https://www.ycombinator.com/companies/useforward","addedOn":"2026-08-06"}
+    {"id":32172,"name":"Solo Labs","slug":"solo-labs","batch":"Summer 2026","batchKey":"summer-2026","oneLiner":"Coding Agents","industry":"Consumer","location":"San Francisco, CA, USA","teamSize":1,"status":"Active","website":"https://jcode.sh/","logo":"https://bookface-images.s3.amazonaws.com/small_logos/0d863d3cf6091c132bb3f8d22d57b3597bc971de.png","url":"https://www.ycombinator.com/companies/solo-labs","addedOn":"2026-08-07"}
   ]
 }
